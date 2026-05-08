@@ -7,14 +7,17 @@ const IGV_RATE = 0.18
 export default function NuevaVenta() {
   const { profile } = useAuth() || {}
   const [catalogo, setCatalogo] = useState([])
-  const [clientes, setClientes] = useState([])
   const [monedas, setMonedas] = useState([])
   const [tipoDoc, setTipoDoc] = useState('Boleta')
   const [serie, setSerie] = useState('B001')
   const [clienteBusqueda, setClienteBusqueda] = useState('')
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
+  const [sugerenciasClientes, setSugerenciasClientes] = useState([])
   const [moneda, setMoneda] = useState('PEN')
   const [busqueda, setBusqueda] = useState('')
+  const [sugerenciasProductos, setSugerenciasProductos] = useState([])
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false)
+  const [mostrarSugerenciasClientes, setMostrarSugerenciasClientes] = useState(false)
   const [cart, setCart] = useState([])
   const [totalRecibido, setTotalRecibido] = useState('')
   const [modal, setModal] = useState(null)
@@ -27,69 +30,61 @@ export default function NuevaVenta() {
   const cargarDatos = async () => {
     setLoading(true)
 
-    // Cargar productos con precios
     const { data: prod } = await supabase
       .from('Productos')
-      .select('*, Productos_Precios(*), Laboratorios(*)')
+      .select('*, Productos_Precios(*, Unidades_Medida(*), Monedas(*)), Laboratorios(*)')
       .eq('estado', true)
 
     setCatalogo(prod || [])
 
-    // Cargar clientes
-    const { data: cli } = await supabase
-      .from('Clientes')
-      .select('*')
-      .eq('estado', true)
-      .order('nombres_razon_social')
-
-    setClientes(cli || [])
-
-    // Cargar monedas
     const { data: mon } = await supabase.from('Monedas').select('*')
     setMonedas(mon || [])
 
     setLoading(false)
   }
 
-  const handleTipoDoc = (tipo) => {
-    setTipoDoc(tipo)
-    setSerie(tipo === 'Boleta' ? 'B001' : 'F001')
+  const buscarProductos = async (termino) => {
+    if (!termino || termino.length < 1) {
+      setSugerenciasProductos([])
+      setMostrarSugerencias(false)
+      return
+    }
+
+    const term = termino.toLowerCase()
+    const resultados = catalogo.filter(p =>
+      p.nombre_comercial?.toLowerCase().includes(term) ||
+      p.principio_activo?.toLowerCase().includes(term) ||
+      p.Laboratorios?.nombre_laboratorio?.toLowerCase().includes(term)
+    ).slice(0, 8)
+
+    setSugerenciasProductos(resultados)
+    setMostrarSugerencias(resultados.length > 0)
   }
 
-  const buscarCliente = async () => {
-    if (!clienteBusqueda) return
+  const buscarClientes = async (termino) => {
+    if (!termino || termino.length < 1) {
+      setSugerenciasClientes([])
+      setMostrarSugerenciasClientes(false)
+      return
+    }
+
+    const term = `%${termino}%`
 
     const { data } = await supabase
       .from('Clientes')
       .select('*')
       .eq('estado', true)
-      .or(`numero_documento.eq.${clienteBusqueda},nombres_razon_social.ilike.%${clienteBusqueda}%`)
-      .limit(5)
+      .or(`nombres_razon_social.ilike.${term},numero_documento.ilike.${term}`)
+      .order('nombres_razon_social')
+      .limit(20)
 
-    if (data && data.length > 0) {
-      setClienteSeleccionado(data[0])
-    }
+    const filtrados = (data || []).filter(c => c.id_cliente !== 1)
+
+    setSugerenciasClientes(filtrados)
+    setMostrarSugerenciasClientes(filtrados.length > 0)
   }
 
-  const subtotal = cart.reduce((acc, item) => acc + (item.precio_venta || item.precio) * item.qty, 0)
-  const igv = subtotal * IGV_RATE
-  const total = subtotal + igv
-  const vuelto = totalRecibido ? parseFloat(totalRecibido) - total : 0
-
-  const addProduct = () => {
-    const term = busqueda.trim().toLowerCase()
-    if (!term) return
-
-    const prod = catalogo.find(p =>
-      p.nombre_comercial?.toLowerCase().includes(term) ||
-      p.principio_activo?.toLowerCase().includes(term)
-    )
-
-    if (!prod) {
-      alert('Producto no encontrado')
-      return
-    }
-
+  const seleccionarProducto = (prod) => {
     const precioDefault = prod.Productos_Precios?.[0]
 
     setCart(prev => {
@@ -107,11 +102,31 @@ export default function NuevaVenta() {
     })
 
     setBusqueda('')
+    setSugerenciasProductos([])
+    setMostrarSugerencias(false)
   }
 
+  const seleccionarCliente = (cliente) => {
+    setClienteSeleccionado(cliente)
+    setClienteBusqueda(cliente.nombres_razon_social)
+    setSugerenciasClientes([])
+    setMostrarSugerenciasClientes(false)
+  }
+
+  const handleTipoDoc = (tipo) => {
+    setTipoDoc(tipo)
+    setSerie(tipo === 'Boleta' ? 'B001' : 'F001')
+  }
+
+  const subtotal = cart.reduce((acc, item) => acc + (item.precio_venta || item.precio) * item.qty, 0)
+  const igv = subtotal * IGV_RATE
+  const total = subtotal + igv
+  const vuelto = totalRecibido ? parseFloat(totalRecibido) - total : 0
+
   const removeItem = (id) => setCart(prev => prev.filter(c => c.id_producto !== id))
+  
   const updateQty = (id, val) => {
-    const q = Math.max(1, parseInt(val) || 1)
+    const q = val === '' ? '' : Math.max(0, parseInt(val) || 0)
     setCart(prev => prev.map(c => c.id_producto === id ? { ...c, qty: q } : c))
   }
 
@@ -121,10 +136,8 @@ export default function NuevaVenta() {
       return
     }
 
-    // 1. Buscar o usar cliente genérico
-    let idCliente = clienteSeleccionado?.id_cliente || 1 // 1 = PÚBLICO EN GENERAL
+    let idCliente = clienteSeleccionado?.id_cliente || 1
 
-    // 2. Obtener serie y correlativo
     const { data: compData } = await supabase
       .from('Tipos_Comprobantes')
       .select('*')
@@ -135,7 +148,6 @@ export default function NuevaVenta() {
     const correlativo = (compData?.correlativo_actual || 0) + 1
     const numeroDoc = String(correlativo).padStart(6, '0')
 
-    // 3. Usar el id_usuario del perfil (desde useAuth)
     const idUsuario = profile?.id_usuario
 
     if (!idUsuario) {
@@ -143,7 +155,7 @@ export default function NuevaVenta() {
       return
     }
 
-    // 4. Insertar venta
+    // 1. Insertar la venta
     const { data: venta, error: errorVenta } = await supabase
       .from('Ventas')
       .insert({
@@ -166,7 +178,7 @@ export default function NuevaVenta() {
       return
     }
 
-    // 5. Insertar detalle (los triggers descuentan stock automáticamente)
+    // 2. Insertar el detalle
     const detalles = cart.map(item => ({
       id_venta: venta.id_venta,
       id_producto: item.id_producto,
@@ -180,13 +192,33 @@ export default function NuevaVenta() {
       .from('Detalle_Ventas')
       .insert(detalles)
 
+    // 3. Si falla el detalle, ELIMINAR la venta huérfana
     if (errorDetalle) {
-      alert('Error en detalle: ' + errorDetalle.message)
+      await supabase
+        .from('Ventas')
+        .delete()
+        .eq('id_venta', venta.id_venta)
+
+      alert('❌ ' + errorDetalle.message)
       return
     }
 
-    // 6. Mostrar confirmación
-    setModal(`${serieUsar}-${numeroDoc}`)
+    // 4. Guardar datos de la venta para imprimir
+    const datosImpresion = {
+      comprobante: `${serieUsar}-${numeroDoc}`,
+      cliente: clienteSeleccionado,
+      cart: [...cart],
+      subtotal,
+      igv,
+      total,
+      totalRecibido,
+      vuelto,
+      moneda,
+      tipoDoc
+    }
+
+    // 5. Todo salió bien
+    setModal(datosImpresion)
     setCart([])
     setTotalRecibido('')
     setClienteSeleccionado(null)
@@ -194,10 +226,129 @@ export default function NuevaVenta() {
     cargarDatos()
   }
 
+  // 📄 IMPRIMIR COMPROBANTE
+  const imprimirComprobante = () => {
+    if (!modal) return
+
+    const cliente = modal.cliente?.nombres_razon_social || 'PÚBLICO EN GENERAL'
+    const docCliente = modal.cliente?.numero_documento || '99999999'
+    const direccion = modal.cliente?.direccion || '-'
+    const telefono = modal.cliente?.telefono || '-'
+    const fecha = new Date().toLocaleDateString('es-PE')
+    const productos = modal.cart || []
+    const subtotalPrint = modal.subtotal || 0
+    const igvPrint = modal.igv || 0
+    const totalPrint = modal.total || 0
+    const recibidoPrint = parseFloat(modal.totalRecibido || 0)
+    const vueltoPrint = modal.vuelto || 0
+    const monedaPrint = modal.moneda || 'PEN'
+    const tipoPrint = modal.tipoDoc || 'Boleta'
+
+    const ventana = window.open('', '_blank', 'width=400,height=600')
+
+    ventana.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${modal.comprobante}</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace; }
+                body { 
+                    width: 80mm; 
+                    margin: 0 auto; 
+                    padding: 10px; 
+                    font-size: 12px; 
+                    color: #000;
+                }
+                .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px; }
+                .header h2 { font-size: 14px; margin-bottom: 2px; }
+                .header small { font-size: 9px; color: #333; }
+                .tipo { text-align: center; font-weight: bold; font-size: 13px; margin: 8px 0; }
+                .numero { text-align: center; font-weight: bold; font-size: 16px; margin: 4px 0; background: #f0f0f0; padding: 4px; }
+                .info { display: flex; justify-content: space-between; font-size: 10px; margin: 8px 0; }
+                .info span { color: #555; }
+                .cliente { font-size: 10px; margin: 8px 0; }
+                .cliente strong { display: block; }
+                table { width: 100%; border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 8px 0; padding: 8px 0; }
+                table th { text-align: left; font-size: 9px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+                table td { font-size: 10px; padding: 2px 0; }
+                .totales { font-size: 11px; }
+                .totales div { display: flex; justify-content: space-between; padding: 2px 0; }
+                .totales .total { font-weight: bold; font-size: 14px; border-top: 1px dashed #000; padding-top: 4px; margin-top: 4px; }
+                .recibido { font-size: 11px; margin-top: 4px; }
+                .gracias { text-align: center; font-size: 10px; margin-top: 12px; color: #555; }
+                @media print {
+                    body { -webkit-print-color-adjust: exact; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>BOTICA NOVA SALUD</h2>
+                <small>RUC 00000000000</small>
+                <br><small>Sistema de ventas</small>
+            </div>
+
+            <div class="tipo">${tipoPrint.toUpperCase()} ELECTRÓNICA</div>
+            <div class="numero">${modal.comprobante}</div>
+
+            <div class="info">
+                <div>Fecha<br><span>${fecha}</span></div>
+                <div>Pago<br><span>Contado</span></div>
+                <div>Moneda<br><span>${monedaPrint}</span></div>
+            </div>
+
+            <div class="cliente">
+                <strong>Cliente: ${cliente}</strong>
+                Documento: ${docCliente}<br>
+                Dirección: ${direccion}<br>
+                Teléfono: ${telefono}
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th style="text-align:right">Importe</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${productos.map(item => `
+                        <tr>
+                            <td>${item.nombre}<br><small>${item.qty} x S/ ${item.precio_venta.toFixed(2)}</small></td>
+                            <td style="text-align:right">S/ ${(item.precio_venta * item.qty).toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+
+            <div class="totales">
+                <div><span>Op. Gravadas</span><span>S/ ${subtotalPrint.toFixed(2)}</span></div>
+                <div><span>Subtotal</span><span>S/ ${subtotalPrint.toFixed(2)}</span></div>
+                <div><span>IGV 18%</span><span>S/ ${igvPrint.toFixed(2)}</span></div>
+                <div class="total"><span>Total</span><span>S/ ${totalPrint.toFixed(2)}</span></div>
+            </div>
+
+            <div class="recibido">
+                <div><span>Recibido</span><span>S/ ${recibidoPrint.toFixed(2)}</span></div>
+                <div><span>Vuelto</span><span>S/ ${vueltoPrint >= 0 ? vueltoPrint.toFixed(2) : '0.00'}</span></div>
+            </div>
+
+            <div class="gracias">Gracias por su compra.</div>
+
+            <script>window.print(); setTimeout(() => window.close(), 500);<\/script>
+        </body>
+        </html>
+    `)
+
+    ventana.document.close()
+    setModal(null)
+  }
+
   if (loading) return <div style={{ padding: 30 }}>Cargando...</div>
 
   return (
-    <div className="pos-page">
+    <div className="pos-page" style={{ overflow: 'visible' }}>
       <div className="pos-header">
         <div>
           <span className="pos-kicker">Punto de venta</span>
@@ -206,24 +357,81 @@ export default function NuevaVenta() {
         </div>
       </div>
 
-      <div className="pos-layout">
-        <main className="pos-main">
-          <section className="pos-panel">
+      <div className="pos-layout" style={{ overflow: 'visible' }}>
+        <main className="pos-main" style={{ overflow: 'visible' }}>
+          {/* PRODUCTOS */}
+          <section className="pos-panel" style={{ overflow: 'visible' }}>
             <div className="pos-panel-head">
               <h2>Agregar productos</h2>
             </div>
 
-            <div className="pos-search">
+            <div className="pos-search" style={{ position: 'relative', overflow: 'visible' }}>
               <i className="ti ti-search" />
               <input
                 placeholder="Buscar producto..."
                 value={busqueda}
-                onChange={e => setBusqueda(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addProduct()}
+                onChange={e => {
+                  setBusqueda(e.target.value)
+                  buscarProductos(e.target.value)
+                }}
+                onFocus={() => busqueda && setMostrarSugerencias(true)}
+                onBlur={() => setTimeout(() => setMostrarSugerencias(false), 200)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && sugerenciasProductos.length > 0) {
+                    seleccionarProducto(sugerenciasProductos[0])
+                  }
+                }}
               />
-              <button onClick={addProduct}>Agregar</button>
+              <button onClick={() => {
+                if (busqueda && sugerenciasProductos.length > 0) {
+                  seleccionarProducto(sugerenciasProductos[0])
+                }
+              }}>Agregar</button>
+
+              {/* Dropdown de sugerencias de productos */}
+              {mostrarSugerencias && sugerenciasProductos.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: 'white',
+                  border: '1px solid #ddd',
+                  borderRadius: 8,
+                  zIndex: 9999,
+                  maxHeight: 250,
+                  overflowY: 'auto',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}>
+                  {sugerenciasProductos.map(p => (
+                    <div
+                      key={p.id_producto}
+                      onClick={() => seleccionarProducto(p)}
+                      style={{
+                        padding: '10px 15px',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #eee',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f0f4ff'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                    >
+                      <div>
+                        <strong>{p.nombre_comercial}</strong>
+                        <div style={{ fontSize: 12, color: '#666' }}>{p.Laboratorios?.nombre_laboratorio} - {p.principio_activo}</div>
+                      </div>
+                      <span style={{ fontWeight: 600, color: '#235ebd' }}>
+                        S/ {p.Productos_Precios?.[0]?.precio_venta?.toFixed(2) || '0.00'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
+            {/* Tabla de productos agregados */}
             <table className="pos-table">
               <thead>
                 <tr>
@@ -242,7 +450,22 @@ export default function NuevaVenta() {
                     <td><strong>{item.nombre}</strong></td>
                     <td>S/ {item.precio_venta.toFixed(2)}</td>
                     <td>
-                      <input type="number" min={1} value={item.qty} onChange={e => updateQty(item.id_producto, e.target.value)} />
+                      <input 
+                        type="text" 
+                        inputMode="numeric" 
+                        pattern="[0-9]*"
+                        value={item.qty} 
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^0-9]/g, '')
+                          updateQty(item.id_producto, val === '' ? '' : val)
+                        }}
+                        onBlur={e => {
+                          if (!e.target.value || parseInt(e.target.value) < 1) {
+                            updateQty(item.id_producto, 1)
+                          }
+                        }}
+                        style={{ width: 60, textAlign: 'center' }}
+                      />
                     </td>
                     <td><strong>S/ {(item.precio_venta * item.qty).toFixed(2)}</strong></td>
                     <td>
@@ -256,7 +479,8 @@ export default function NuevaVenta() {
             </table>
           </section>
 
-          <section className="pos-panel">
+          {/* COMPROBANTE */}
+          <section className="pos-panel" style={{ position: 'relative', zIndex: 1 }}>
             <h2>Comprobante</h2>
             <div className="doc-switch">
               {['Boleta', 'Factura'].map(t => (
@@ -266,27 +490,80 @@ export default function NuevaVenta() {
               ))}
             </div>
             <p>Serie: {serie}</p>
-            <p>Moneda: {moneda}</p>
             <select value={moneda} onChange={e => setMoneda(e.target.value)}>
               {monedas.map(m => <option key={m.id_moneda} value={m.codigo_moneda}>{m.nombre_moneda}</option>)}
             </select>
           </section>
 
-          <section className="pos-panel">
+          {/* CLIENTE */}
+          <section className="pos-panel" style={{ overflow: 'visible' }}>
             <h2>Cliente</h2>
-            <div>
-              <input placeholder="Buscar cliente..." value={clienteBusqueda} onChange={e => setClienteBusqueda(e.target.value)} />
-              <button onClick={buscarCliente}>Buscar</button>
+            <div style={{ position: 'relative', overflow: 'visible' }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  placeholder="Buscar cliente..."
+                  value={clienteBusqueda}
+                  onChange={e => {
+                    setClienteBusqueda(e.target.value)
+                    buscarClientes(e.target.value)
+                    if (!e.target.value) {
+                      setClienteSeleccionado(null)
+                    }
+                  }}
+                  onFocus={() => clienteBusqueda && setMostrarSugerenciasClientes(true)}
+                  onBlur={() => setTimeout(() => setMostrarSugerenciasClientes(false), 200)}
+                  style={{ flex: 1 }}
+                />
+                <button onClick={() => buscarClientes(clienteBusqueda)}>Buscar</button>
+              </div>
+
+              {/* Dropdown de sugerencias de clientes */}
+              {mostrarSugerenciasClientes && sugerenciasClientes.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: 'white',
+                  border: '1px solid #ddd',
+                  borderRadius: 8,
+                  zIndex: 9999,
+                  maxHeight: 250,
+                  overflowY: 'auto',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                }}>
+                  {sugerenciasClientes.map(c => (
+                    <div
+                      key={c.id_cliente}
+                      onClick={() => seleccionarCliente(c)}
+                      style={{
+                        padding: '10px 15px',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #eee'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f0f4ff'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                    >
+                      <strong>{c.nombres_razon_social}</strong>
+                      <span style={{ marginLeft: 10, color: '#666', fontSize: 13 }}>
+                        {c.tipo_documento}: {c.numero_documento}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+
             {clienteSeleccionado && (
-              <div>
+              <div style={{ marginTop: 10, padding: 10, background: '#f0f4ff', borderRadius: 8 }}>
                 <strong>{clienteSeleccionado.nombres_razon_social}</strong>
-                <p>{clienteSeleccionado.numero_documento}</p>
+                <p style={{ margin: 0, color: '#666' }}>{clienteSeleccionado.tipo_documento}: {clienteSeleccionado.numero_documento}</p>
               </div>
             )}
           </section>
         </main>
 
+        {/* RESUMEN */}
         <aside className="pos-summary">
           <div className="summary-card">
             <h3>Resumen</h3>
@@ -311,12 +588,94 @@ export default function NuevaVenta() {
         </aside>
       </div>
 
+      {/* Modal de confirmación */}
       {modal && (
-        <div className="modal-backdrop" onClick={() => setModal(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>✅ ¡Venta registrada!</h3>
-            <p>{modal}</p>
-            <button onClick={() => setModal(null)}>Continuar</button>
+        <div 
+          onClick={() => setModal(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999
+          }}
+        >
+          <div 
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: 16,
+              padding: 32,
+              maxWidth: 450,
+              width: '90%',
+              textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+            }}
+          >
+            <div style={{
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              background: '#e8f5e9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+              fontSize: 40
+            }}>
+              ✅
+            </div>
+
+            <h3 style={{ margin: '0 0 8px', fontSize: 22 }}>¡Venta registrada!</h3>
+            <div style={{
+              fontSize: 16,
+              color: '#235ebd',
+              fontWeight: 700,
+              background: '#f0f4ff',
+              padding: '8px 16px',
+              borderRadius: 8,
+              display: 'inline-block',
+              marginBottom: 16
+            }}>
+              {modal.comprobante}
+            </div>
+            <p style={{ color: '#666', marginBottom: 24, fontSize: 14 }}>
+              El comprobante fue generado correctamente.
+            </p>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button 
+                className="btn"
+                onClick={imprimirComprobante}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '12px 24px',
+                  fontSize: 15
+                }}
+              >
+                <i className="ti ti-printer" /> Imprimir
+              </button>
+              <button 
+                className="btn btn-primary"
+                onClick={() => setModal(null)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '12px 24px',
+                  fontSize: 15
+                }}
+              >
+                Continuar
+              </button>
+            </div>
           </div>
         </div>
       )}
