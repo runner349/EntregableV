@@ -36,7 +36,6 @@ export default function Empleados() {
 
     // Cargar cargos disponibles
     const { data: car } = await supabase.from('Cargos').select('*')
-    console.log('Cargos cargados:', car)  // ← Agrega esto
     setCargos(car || [])
 
     setLoading(false)
@@ -51,7 +50,7 @@ export default function Empleados() {
 
     try {
       if (editando) {
-        // Editar empleado (sin cambios en auth)
+        // Editar empleado
         const { error } = await supabase
           .from('Empleados')
           .update({
@@ -65,7 +64,7 @@ export default function Empleados() {
         if (error) throw error
         alert('✅ Empleado actualizado')
       } else {
-        // 1. Crear empleado
+        // 1. Crear empleado primero
         const { data: empleado, error: errorEmp } = await supabase
           .from('Empleados')
           .insert({
@@ -77,33 +76,44 @@ export default function Empleados() {
           .select('id_empleado')
           .single()
 
-        if (errorEmp) throw errorEmp
+        if (errorEmp) {
+          // Manejar error de DNI duplicado
+          if (errorEmp.message?.includes('duplicate key')) {
+            throw new Error('Ya existe un empleado con ese DNI')
+          }
+          throw errorEmp
+        }
 
-        // 2. Si tiene email y password, crear en auth
+        // 2. Si tiene email y password, crear usuario
         if (form.username && form.password) {
-          // Usar signUp (crea en auth.users)
-          const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: form.username,
-            password: form.password,
-            options: {
-              emailRedirectTo: window.location.origin,
-              data: { id_empleado: empleado.id_empleado }
-            }
-          })
+          try {
+            // 🔥 Usar la Edge Function para crear el usuario en Auth
+            const response = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({
+                  email: form.username,
+                  password: form.password,
+                  id_empleado: empleado.id_empleado,
+                  id_rol: form.id_rol
+                })
+              }
+            )
 
-          if (authError) {
-            alert('⚠️ Empleado creado pero falló el usuario: ' + authError.message)
-          } else {
-            // Vincular usuario al empleado en tu tabla
-            await supabase
-              .from('Usuarios')
-              .update({
-                id_empleado: empleado.id_empleado,
-                id_rol: form.id_rol
-              })
-              .eq('username', form.username)
-            
-            alert('✅ Empleado y usuario creados. El usuario debe confirmar su email.')
+            if (!response.ok) {
+              const errorData = await response.json()
+              throw new Error(errorData.error || 'Error al crear usuario')
+            }
+
+            alert('✅ Empleado y usuario creados correctamente. Ya puede iniciar sesión.')
+          } catch (authError) {
+            console.error('Error al crear usuario:', authError)
+            alert('⚠️ Empleado creado, pero hubo un problema al crear su acceso al sistema: ' + authError.message)
           }
         } else {
           alert('✅ Empleado creado sin acceso al sistema')
@@ -115,6 +125,7 @@ export default function Empleados() {
       setForm({ dni: '', nombres: '', apellidos: '', id_cargo: '', username: '', password: '', id_rol: 2 })
       cargarDatos()
     } catch (error) {
+      console.error('Error en handleSubmit:', error)
       alert('❌ Error: ' + error.message)
     }
   }
