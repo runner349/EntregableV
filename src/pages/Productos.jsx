@@ -115,12 +115,7 @@ const styles = `
     letter-spacing: -0.02em;
   }
 
-  /* ── Filter Bar ── */
-  /*
-   * Una sola fila: [búsqueda] [pills categoría] [ranking buttons] [sep] [vista]
-   * Usamos flex con nowrap en pantallas amplias y scroll horizontal
-   * para que todo quede en una misma línea.
-   */
+  /* Filter Bar — una sola fila con scroll horizontal */
   .pr-filterbar {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -155,8 +150,8 @@ const styles = `
     background: var(--surface);
   }
   .pr-input::placeholder { color: var(--ink-4); }
+  .pr-input-error { border-color: var(--danger) !important; }
 
-  /* búsqueda: ancho fijo para no empujar a los demás */
   .pr-search-wrap {
     position: relative;
     flex: 0 0 200px;
@@ -167,7 +162,6 @@ const styles = `
     color: var(--ink-4); font-size: 13px; pointer-events: none;
   }
 
-  /* Grupo de pills de categoría */
   .pr-cat-pills {
     display: flex;
     gap: 5px;
@@ -175,7 +169,6 @@ const styles = `
     flex-shrink: 0;
   }
 
-  /* Pill buttons */
   .pr-pill {
     padding: 5px 12px; border-radius: 100px;
     border: 1px solid var(--border);
@@ -188,7 +181,6 @@ const styles = `
   .pr-pill:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
   .pr-pill.active { border-color: var(--accent); color: #fff; background: var(--accent); }
 
-  /* Grupo de botones de ranking */
   .pr-rank-group {
     display: flex;
     gap: 5px;
@@ -213,19 +205,13 @@ const styles = `
 
   .pr-sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
 
-  /* Grupo de botones de vista */
-  .pr-view-group {
-    display: flex;
-    gap: 4px;
-    flex-shrink: 0;
-  }
+  .pr-view-group { display: flex; gap: 4px; flex-shrink: 0; }
   .pr-view-btn {
     width: 30px; height: 30px; border-radius: 7px;
     border: 1px solid var(--border); background: var(--surface);
     color: var(--ink-3); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    font-size: 14px; transition: all 0.15s;
-    flex-shrink: 0;
+    font-size: 14px; transition: all 0.15s; flex-shrink: 0;
   }
   .pr-view-btn.active { background: var(--ink); border-color: var(--ink); color: #fff; }
   .pr-view-btn:hover:not(.active) { background: var(--surface-2); color: var(--ink-2); }
@@ -261,24 +247,18 @@ const styles = `
   .pr-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
   .pr-card:hover .pr-card-img img { transform: scale(1.04); }
   .pr-card-body { padding: 13px 14px 16px; flex: 1; display: flex; flex-direction: column; }
-  .pr-card-lab {
-    display: flex; align-items: center; gap: 5px; margin-bottom: 7px;
-  }
+  .pr-card-lab { display: flex; align-items: center; gap: 5px; margin-bottom: 7px; }
   .pr-card-lab-dot {
     width: 18px; height: 18px; border-radius: 50%;
     background: var(--accent-dim); border: 1px solid var(--accent-mid);
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .pr-card-lab span { font-size: 11px; color: var(--ink-3); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pr-card-pres { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4); margin-bottom: 3px; }
   .pr-card-name { font-size: 13px; font-weight: 700; color: var(--ink); line-height: 1.3; margin: 0 0 3px; }
   .pr-card-sub { font-size: 11px; color: var(--ink-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 0 12px; }
   .pr-card-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; }
-  .pr-card-price {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 18px; font-weight: 700; color: var(--ink);
-  }
+  .pr-card-price { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--ink); }
   .pr-card-price-none { font-size: 14px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
 
   /* Rank tags */
@@ -286,10 +266,7 @@ const styles = `
     position: absolute; top: 9px; right: 9px;
     display: flex; flex-direction: column; gap: 5px; align-items: flex-end;
   }
-  .pr-rank-tag {
-    font-size: 9px; font-weight: 700; padding: 3px 8px;
-    border-radius: 100px; letter-spacing: 0.04em;
-  }
+  .pr-rank-tag { font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 100px; letter-spacing: 0.04em; }
   .pr-rank-tag-top      { background: var(--ink);   color: #fff; }
   .pr-rank-tag-low      { background: var(--danger); color: #fff; }
   .pr-rank-tag-sale     { background: var(--info);   color: #fff; }
@@ -320,10 +297,7 @@ const styles = `
     background: var(--surface-2);
     border-bottom: 1px solid var(--border);
   }
-  .pr-list-head span {
-    font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.08em; color: var(--ink-3);
-  }
+  .pr-list-head span { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
   .pr-list-row {
     display: grid;
     grid-template-columns: 46px 1fr 140px 110px 110px 90px 80px;
@@ -337,12 +311,11 @@ const styles = `
   .pr-list-thumb {
     width: 40px; height: 40px; border-radius: 9px;
     background: var(--surface-2); border: 1px solid var(--border);
-    overflow: hidden; display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+    overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .pr-list-thumb img { width: 100%; height: 100%; object-fit: cover; }
   .pr-list-name { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pr-list-sub { font-size: 11px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pr-list-sub  { font-size: 11px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pr-list-cell { font-size: 12px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pr-cat-chip {
     display: inline-block; font-size: 10px; font-weight: 600;
@@ -359,9 +332,9 @@ const styles = `
     background: var(--surface);
     border: 1px solid var(--border); border-radius: var(--radius);
   }
-  .pr-empty-icon { font-size: 34px; color: var(--ink-4); margin-bottom: 10px; opacity: 0.4; }
+  .pr-empty-icon  { font-size: 34px; color: var(--ink-4); margin-bottom: 10px; opacity: 0.4; }
   .pr-empty-title { font-size: 14px; font-weight: 600; color: var(--ink-3); margin-bottom: 4px; }
-  .pr-empty-sub { font-size: 12px; color: var(--ink-4); }
+  .pr-empty-sub   { font-size: 12px; color: var(--ink-4); }
 
   /* Skeleton */
   .pr-skel {
@@ -385,10 +358,7 @@ const styles = `
   .pr-btn-ghost:hover { background: var(--surface-3); }
   .pr-btn-danger { background: var(--danger); color: #fff; }
   .pr-btn-danger:hover { background: #c42222; }
-  .pr-btn-danger-outline {
-    background: var(--danger-dim); color: var(--danger);
-    border: 1px solid var(--danger-mid);
-  }
+  .pr-btn-danger-outline { background: var(--danger-dim); color: var(--danger); border: 1px solid var(--danger-mid); }
   .pr-btn-danger-outline:hover { background: rgba(229,53,53,0.18); }
 
   /* Modal */
@@ -428,6 +398,7 @@ const styles = `
   .pr-divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
   .pr-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .pr-3col { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+  .pr-error-msg { font-size: 11px; color: var(--danger); margin-top: -6px; }
 
   /* Detail grid */
   .pr-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
@@ -435,11 +406,8 @@ const styles = `
     background: var(--surface-2); border: 1px solid var(--border);
     border-radius: var(--radius-sm); padding: 10px 12px;
   }
-  .pr-detail-cell-label {
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.08em; color: var(--ink-3); margin-bottom: 3px;
-  }
-  .pr-detail-cell-val { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .pr-detail-cell-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); margin-bottom: 3px; }
+  .pr-detail-cell-val   { font-size: 13px; font-weight: 600; color: var(--ink); }
 
   /* Price hero */
   .pr-price-hero {
@@ -449,8 +417,7 @@ const styles = `
   }
   .pr-price-big {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 26px; font-weight: 700; color: var(--ink);
-    letter-spacing: -0.02em;
+    font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em;
   }
 
   /* Toast */
@@ -471,6 +438,13 @@ const styles = `
 const Skel = ({ w, h, r = 8 }) => (
   <div className="pr-skel" style={{ width: w || '100%', height: h || 18, borderRadius: r }} />
 )
+
+// ── Valor inicial del formulario ──────────────────────────────────────────────
+const FORM_INICIAL = {
+  nombre_comercial: '', principio_activo: '', id_laboratorio: '', id_categoria: '',
+  id_presentacion: '', stock_actual_unidades: 0, stock_minimo_unidades: 20,
+  fecha_vencimiento: '', precio_venta: '', id_unidad: '1', id_moneda: '1', imagen_url: ''
+}
 
 export default function Productos() {
   const [productos, setProductos]             = useState([])
@@ -493,12 +467,8 @@ export default function Productos() {
   const [toast, setToast]                     = useState(null)
   const [confirmDelete, setConfirmDelete]     = useState(null)
   const [productoSeleccionado, setProductoSeleccionado] = useState(null)
-
-  const [form, setForm] = useState({
-    nombre_comercial: '', principio_activo: '', id_laboratorio: '', id_categoria: '',
-    id_presentacion: '', stock_actual_unidades: 0, stock_minimo_unidades: 20,
-    fecha_vencimiento: '', precio_venta: '', id_unidad: '', id_moneda: '1', imagen_url: ''
-  })
+  const [erroresForm, setErroresForm]         = useState({})
+  const [form, setForm]                       = useState(FORM_INICIAL)
 
   useEffect(() => { cargarDatos() }, [])
   useEffect(() => {
@@ -507,10 +477,14 @@ export default function Productos() {
     return () => clearTimeout(t)
   }, [toast])
 
+  // ── Carga de datos ────────────────────────────────────────────────────────
   const cargarDatos = async () => {
     setLoading(true)
     try {
-      const [{ data: prod }, { data: cat }, { data: lab }, { data: pres }, { data: uni }, { data: mon }, { data: det }] = await Promise.all([
+      const [
+        { data: prod }, { data: cat }, { data: lab },
+        { data: pres }, { data: uni }, { data: mon }, { data: det }
+      ] = await Promise.all([
         supabase.from('Productos').select('*, Laboratorios(*), Categorias(*), Presentaciones(*), Productos_Precios(*, Unidades_Medida(*), Monedas(*))').eq('estado', true).order('nombre_comercial'),
         supabase.from('Categorias').select('*'),
         supabase.from('Laboratorios').select('*').eq('estado', true),
@@ -519,19 +493,27 @@ export default function Productos() {
         supabase.from('Monedas').select('*'),
         supabase.from('Detalle_Ventas').select('id_producto,cantidad'),
       ])
-      setProductos(prod || []); setCategorias(cat || []); setLaboratorios(lab || [])
-      setPresentaciones(pres || []); setUnidades(uni || []); setMonedas(mon || [])
+      setProductos(prod || [])
+      setCategorias(cat || [])
+      setLaboratorios(lab || [])
+      setPresentaciones(pres || [])
+      setUnidades(uni || [])
+      setMonedas(mon || [])
+
       const ventasMap = {}
       ;(det || []).forEach(item => {
-        const id = item.id_producto
-        if (!id) return
-        ventasMap[id] = (ventasMap[id] || 0) + Number(item.cantidad || 0)
+        if (!item.id_producto) return
+        ventasMap[item.id_producto] = (ventasMap[item.id_producto] || 0) + Number(item.cantidad || 0)
       })
       setVentasPorProducto(ventasMap)
-    } catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
   }
 
+  // ── Subir imagen ──────────────────────────────────────────────────────────
   const subirImagen = async (file) => {
     if (!file) return null
     setUploading(true)
@@ -543,61 +525,193 @@ export default function Productos() {
     return urlData.publicUrl
   }
 
+  // ── Guardar precio con upsert (del segundo componente) ────────────────────
+  const guardarPrecio = async (idProducto, precioVenta, idUnidad, idMoneda) => {
+    const precio = parseFloat(precioVenta)
+    if (isNaN(precio) || precio <= 0) return
+
+    const unidad = parseInt(idUnidad) || 1
+    const moneda = parseInt(idMoneda) || 1
+
+    try {
+      const { data: existente, error: errorBusqueda } = await supabase
+        .from('Productos_Precios')
+        .select('id_producto_precio')
+        .eq('id_producto', idProducto)
+        .maybeSingle()
+
+      if (errorBusqueda) { console.error('Error buscando precio:', errorBusqueda); return }
+
+      const payload = {
+        precio_venta: precio,
+        id_unidad: unidad,
+        id_moneda: moneda,
+        cantidad_equivalente: 1
+      }
+
+      if (existente) {
+        const { error } = await supabase
+          .from('Productos_Precios')
+          .update(payload)
+          .eq('id_producto_precio', existente.id_producto_precio)
+        if (error) console.error('Error actualizando precio:', error)
+      } else {
+        const { error } = await supabase
+          .from('Productos_Precios')
+          .insert({ id_producto: idProducto, ...payload })
+        if (error) console.error('Error insertando precio:', error)
+      }
+    } catch (e) {
+      console.error('Error en guardarPrecio:', e)
+    }
+  }
+
+  // ── Validación del formulario (del segundo componente) ────────────────────
+  const validarForm = () => {
+    const errores = {}
+    if (!form.nombre_comercial.trim()) errores.nombre_comercial = 'Requerido'
+    if (!form.id_laboratorio)          errores.id_laboratorio   = 'Requerido'
+    if (!form.id_categoria)            errores.id_categoria     = 'Requerido'
+    if (!form.id_presentacion)         errores.id_presentacion  = 'Requerido'
+    if (form.precio_venta !== '' && form.precio_venta !== null) {
+      const p = parseFloat(form.precio_venta)
+      if (isNaN(p) || p <= 0) errores.precio_venta = 'El precio debe ser mayor a 0'
+    }
+    setErroresForm(errores)
+    return Object.keys(errores).length === 0
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.nombre_comercial || !form.id_laboratorio || !form.id_categoria || !form.id_presentacion) {
-      setToast({ tipo: 'error', mensaje: 'Completa los campos obligatorios' }); return
+    if (!validarForm()) {
+      setToast({ tipo: 'error', mensaje: 'Completa los campos obligatorios' })
+      return
     }
     try {
       let imagenUrl = form.imagen_url
-      if (imagenFile) { const url = await subirImagen(imagenFile); if (url) imagenUrl = url }
+      if (imagenFile) {
+        const url = await subirImagen(imagenFile)
+        if (url) imagenUrl = url
+      }
+
+      // Capturar valores de precio ANTES de cualquier operación async
+      const precioVenta = form.precio_venta
+      const idUnidad    = form.id_unidad
+      const idMoneda    = form.id_moneda
+
+      const productoData = {
+        nombre_comercial:     form.nombre_comercial.trim(),
+        principio_activo:     form.principio_activo?.trim() || null,
+        id_laboratorio:       parseInt(form.id_laboratorio),
+        id_categoria:         parseInt(form.id_categoria),
+        id_presentacion:      parseInt(form.id_presentacion),
+        stock_actual_unidades: parseInt(form.stock_actual_unidades) || 0,
+        stock_minimo_unidades: parseInt(form.stock_minimo_unidades) || 20,
+        fecha_vencimiento:    form.fecha_vencimiento || null,
+        imagen_url:           imagenUrl || null,
+      }
+
       if (editando) {
-        await supabase.from('Productos').update({ ...form, imagen_url: imagenUrl }).eq('id_producto', editando)
+        const { error } = await supabase.from('Productos').update(productoData).eq('id_producto', editando)
+        if (error) throw error
+        await guardarPrecio(editando, precioVenta, idUnidad, idMoneda)
         setToast({ tipo: 'success', mensaje: 'Producto actualizado correctamente' })
       } else {
-        const { data: prod } = await supabase.from('Productos').insert({ ...form, imagen_url: imagenUrl }).select('id_producto').single()
-        if (form.precio_venta && form.id_unidad) {
-          await supabase.from('Productos_Precios').insert({ id_producto: prod.id_producto, id_unidad: form.id_unidad, cantidad_equivalente: 1, precio_venta: form.precio_venta, id_moneda: form.id_moneda })
+        const { data: producto, error } = await supabase
+          .from('Productos')
+          .insert(productoData)
+          .select('id_producto')
+          .single()
+        if (error) throw error
+        if (producto?.id_producto) {
+          await guardarPrecio(producto.id_producto, precioVenta, idUnidad, idMoneda)
         }
         setToast({ tipo: 'success', mensaje: 'Producto creado correctamente' })
       }
-      setMostrarForm(false); setEditando(null); setImagenFile(null); setImagenPreview(null)
-      setForm({ nombre_comercial: '', principio_activo: '', id_laboratorio: '', id_categoria: '', id_presentacion: '', stock_actual_unidades: 0, stock_minimo_unidades: 20, fecha_vencimiento: '', precio_venta: '', id_unidad: '', id_moneda: '1', imagen_url: '' })
+
+      resetForm()
       cargarDatos()
-    } catch (e) { setToast({ tipo: 'error', mensaje: 'Error: ' + e.message }) }
+    } catch (e) {
+      console.error(e)
+      setToast({ tipo: 'error', mensaje: 'Error: ' + (e.message || 'Inténtalo de nuevo') })
+    }
   }
 
+  // ── Reset del formulario (del segundo componente) ─────────────────────────
+  const resetForm = () => {
+    setMostrarForm(false)
+    setEditando(null)
+    setImagenFile(null)
+    setImagenPreview(null)
+    setErroresForm({})
+    setForm(FORM_INICIAL)
+  }
+
+  // ── Editar (con conversión a string, del segundo componente) ──────────────
   const handleEditar = (p) => {
     setEditando(p.id_producto)
     const precio = p.Productos_Precios?.[0]
     setForm({
-      nombre_comercial: p.nombre_comercial, principio_activo: p.principio_activo || '',
-      id_laboratorio: p.id_laboratorio, id_categoria: p.id_categoria, id_presentacion: p.id_presentacion,
-      stock_actual_unidades: p.stock_actual_unidades, stock_minimo_unidades: p.stock_minimo_unidades,
-      fecha_vencimiento: p.fecha_vencimiento || '', precio_venta: precio?.precio_venta || '',
-      id_unidad: precio?.id_unidad || '', id_moneda: precio?.id_moneda || '1', imagen_url: p.imagen_url || ''
+      nombre_comercial:      p.nombre_comercial || '',
+      principio_activo:      p.principio_activo || '',
+      id_laboratorio:        p.id_laboratorio?.toString()  || '',
+      id_categoria:          p.id_categoria?.toString()    || '',
+      id_presentacion:       p.id_presentacion?.toString() || '',
+      stock_actual_unidades: p.stock_actual_unidades ?? 0,
+      stock_minimo_unidades: p.stock_minimo_unidades ?? 20,
+      fecha_vencimiento:     p.fecha_vencimiento || '',
+      // Convertir a string para que el input controlled funcione correctamente
+      precio_venta: precio?.precio_venta != null ? String(precio.precio_venta) : '',
+      id_unidad:    precio?.id_unidad    != null ? String(precio.id_unidad)    : '1',
+      id_moneda:    precio?.id_moneda    != null ? String(precio.id_moneda)    : '1',
+      imagen_url:   p.imagen_url || ''
     })
-    setImagenPreview(p.imagen_url || null); setImagenFile(null); setProductoSeleccionado(null); setMostrarForm(true)
+    setImagenPreview(p.imagen_url || null)
+    setImagenFile(null)
+    setErroresForm({})
+    setProductoSeleccionado(null)
+    setMostrarForm(true)
   }
 
+  // ── Eliminar ──────────────────────────────────────────────────────────────
   const confirmarEliminar = async () => {
     if (!confirmDelete) return
     await supabase.from('Productos').update({ estado: false }).eq('id_producto', confirmDelete)
     setToast({ tipo: 'success', mensaje: 'Producto eliminado del catálogo' })
-    setConfirmDelete(null); setProductoSeleccionado(null); cargarDatos()
+    setConfirmDelete(null)
+    setProductoSeleccionado(null)
+    cargarDatos()
   }
 
-  const rankingSize = Math.max(1, Math.ceil(productos.length * 0.3))
-  const sortedStock = [...productos].sort((a, b) => b.stock_actual_unidades - a.stock_actual_unidades)
-  const masStock    = sortedStock.slice(0, rankingSize).map(p => p.id_producto)
-  const menosStock  = sortedStock.slice(-rankingSize).map(p => p.id_producto)
+  // ── Helpers de UI ─────────────────────────────────────────────────────────
+  const stockClass = (p) => p.stock_actual_unidades <= 0 ? 'pr-stock-bad'
+    : p.stock_actual_unidades <= p.stock_minimo_unidades ? 'pr-stock-warn' : 'pr-stock-ok'
+  const stockText  = (p) => p.stock_actual_unidades <= 0 ? 'Agotado' : `${p.stock_actual_unidades} u.`
+
+  const mostrarPrecio = (precio) => {
+    if (!precio || precio.precio_venta == null) return '—'
+    const v = Number(precio.precio_venta)
+    if (isNaN(v) || v <= 0) return '—'
+    return `S/ ${v.toFixed(2)}`
+  }
+
+  // ── Ranking ───────────────────────────────────────────────────────────────
+  const rankingSize   = Math.max(1, Math.ceil(productos.length * 0.3))
+  const sortedStock   = [...productos].sort((a, b) => b.stock_actual_unidades - a.stock_actual_unidades)
+  const masStock      = sortedStock.slice(0, rankingSize).map(p => p.id_producto)
+  const menosStock    = sortedStock.slice(-rankingSize).map(p => p.id_producto)
   const sortedVentas  = [...productos].sort((a, b) => (ventasPorProducto[b.id_producto] || 0) - (ventasPorProducto[a.id_producto] || 0))
   const masVendidos   = sortedVentas.filter(p => (ventasPorProducto[p.id_producto] || 0) > 0).slice(0, rankingSize).map(p => p.id_producto)
   const menosVendidos = sortedVentas.slice(-rankingSize).map(p => p.id_producto)
+
   const categoriasUnicas = ['Todas', ...new Set(productos.map(p => p.Categorias?.nombre_categoria).filter(Boolean))]
 
   const filtrados = productos.filter(p => {
-    const matchB = !busqueda || p.nombre_comercial?.toLowerCase().includes(busqueda.toLowerCase()) || p.Laboratorios?.nombre_laboratorio?.toLowerCase().includes(busqueda.toLowerCase()) || p.principio_activo?.toLowerCase().includes(busqueda.toLowerCase())
+    const matchB = !busqueda
+      || p.nombre_comercial?.toLowerCase().includes(busqueda.toLowerCase())
+      || p.Laboratorios?.nombre_laboratorio?.toLowerCase().includes(busqueda.toLowerCase())
+      || p.principio_activo?.toLowerCase().includes(busqueda.toLowerCase())
     const matchC = categoriaFiltro === 'Todas' || p.Categorias?.nombre_categoria === categoriaFiltro
     const matchR =
       rankFiltro === 'todos' ||
@@ -612,15 +726,19 @@ export default function Productos() {
   const bajoStock  = productos.filter(p => p.stock_actual_unidades > 0 && p.stock_actual_unidades <= p.stock_minimo_unidades).length
   const totalValor = productos.reduce((acc, p) => acc + (p.Productos_Precios?.[0]?.precio_venta || 0) * p.stock_actual_unidades, 0)
 
-  const stockClass = (p) => p.stock_actual_unidades <= 0 ? 'pr-stock-bad' : p.stock_actual_unidades <= p.stock_minimo_unidades ? 'pr-stock-warn' : 'pr-stock-ok'
-  const stockText  = (p) => p.stock_actual_unidades <= 0 ? 'Agotado' : `${p.stock_actual_unidades} u.`
   const rankInfo = {
-    'stock-mas':    { label: 'Mayor stock',     color: 'var(--accent)' },
-    'stock-menos':  { label: 'Menor stock',     color: 'var(--danger)' },
-    'ventas-mas':   { label: 'Más vendidos',    color: 'var(--info)'   },
-    'ventas-menos': { label: 'Menos vendidos',  color: 'var(--warn)'   },
+    'stock-mas':    { label: 'Mayor stock',    color: 'var(--accent)' },
+    'stock-menos':  { label: 'Menor stock',    color: 'var(--danger)' },
+    'ventas-mas':   { label: 'Más vendidos',   color: 'var(--info)'   },
+    'ventas-menos': { label: 'Menos vendidos', color: 'var(--warn)'   },
   }[rankFiltro]
 
+  // ── Error msg inline ──────────────────────────────────────────────────────
+  const ErrMsg = ({ campo }) => erroresForm[campo]
+    ? <p className="pr-error-msg">{erroresForm[campo]}</p>
+    : null
+
+  // ── Skeleton ──────────────────────────────────────────────────────────────
   if (loading) return (
     <div className="pr-root">
       <style>{styles}</style>
@@ -646,25 +764,25 @@ export default function Productos() {
     <div className="pr-root">
       <style>{styles}</style>
 
-      {/* HEADER */}
+      {/* ── HEADER ── */}
       <div className="pr-header">
         <div>
           <div className="pr-badge"><div className="pr-badge-dot" />Catálogo</div>
           <h1 className="pr-title">Productos</h1>
           <p className="pr-subtitle">{productos.length} productos registrados</p>
         </div>
-        <button className="pr-btn pr-btn-primary" onClick={() => { setEditando(null); setImagenPreview(null); setImagenFile(null); setMostrarForm(true) }}>
+        <button className="pr-btn pr-btn-primary" onClick={() => { resetForm(); setMostrarForm(true) }}>
           <i className="ti ti-plus" style={{ fontSize: 14 }} /> Nuevo producto
         </button>
       </div>
 
-      {/* STAT CARDS */}
+      {/* ── STAT CARDS ── */}
       <div className="pr-stats">
         {[
-          { label: 'Total productos', value: productos.length,        icon: 'ti-pill',            color: 'var(--accent)', bg: 'var(--accent-dim)' },
-          { label: 'Valor en stock',  value: `S/ ${totalValor.toLocaleString('es-PE', { minimumFractionDigits: 0 })}`, icon: 'ti-currency-sol', color: 'var(--info)',   bg: 'var(--info-dim)'   },
-          { label: 'Bajo stock',      value: bajoStock,               icon: 'ti-alert-triangle',  color: 'var(--warn)',   bg: 'var(--warn-dim)'   },
-          { label: 'Agotados',        value: agotados,                icon: 'ti-ban',             color: 'var(--danger)', bg: 'var(--danger-dim)' },
+          { label: 'Total productos', value: productos.length, icon: 'ti-pill',           color: 'var(--accent)', bg: 'var(--accent-dim)' },
+          { label: 'Valor en stock',  value: `S/ ${totalValor.toLocaleString('es-PE', { minimumFractionDigits: 0 })}`, icon: 'ti-currency-sol', color: 'var(--info)', bg: 'var(--info-dim)' },
+          { label: 'Bajo stock',      value: bajoStock,        icon: 'ti-alert-triangle',  color: 'var(--warn)',   bg: 'var(--warn-dim)'   },
+          { label: 'Agotados',        value: agotados,         icon: 'ti-ban',             color: 'var(--danger)', bg: 'var(--danger-dim)' },
         ].map((s, i) => (
           <div className="pr-stat" key={i}>
             <div className="pr-stat-top">
@@ -680,8 +798,6 @@ export default function Productos() {
 
       {/* ── FILTER BAR (una sola fila) ── */}
       <div className="pr-filterbar">
-
-        {/* Búsqueda */}
         <div className="pr-search-wrap">
           <i className="ti ti-search pr-search-icon" />
           <input
@@ -693,17 +809,14 @@ export default function Productos() {
           />
         </div>
 
-        {/* Pills de categoría */}
         <div className="pr-cat-pills">
           {categoriasUnicas.map(c => (
             <button key={c} className={`pr-pill ${categoriaFiltro === c ? 'active' : ''}`} onClick={() => setCategoriaFiltro(c)}>{c}</button>
           ))}
         </div>
 
-        {/* Separador visual */}
         <div className="pr-sep" />
 
-        {/* Botones de ranking — todos en una fila */}
         <div className="pr-rank-group">
           <button className={`pr-rank-btn ${rankFiltro === 'stock-mas'    ? 'pr-rank-top'      : ''}`} onClick={() => setRankFiltro(r => r === 'stock-mas'    ? 'todos' : 'stock-mas')}>
             <i className="ti ti-trending-up"   style={{ fontSize: 11 }} /> Más stock
@@ -719,13 +832,11 @@ export default function Productos() {
           </button>
         </div>
 
-        {/* Separador + botones de vista */}
         <div className="pr-sep" />
         <div className="pr-view-group">
           <button className={`pr-view-btn ${!vistaLista ? 'active' : ''}`} onClick={() => setVistaLista(false)} title="Tarjetas"><i className="ti ti-layout-grid" /></button>
           <button className={`pr-view-btn ${ vistaLista ? 'active' : ''}`} onClick={() => setVistaLista(true)}  title="Lista"><i className="ti ti-layout-list" /></button>
         </div>
-
       </div>
 
       <p className="pr-count">
@@ -733,7 +844,7 @@ export default function Productos() {
         {rankInfo && <span style={{ color: rankInfo.color, marginLeft: 6 }}>· {rankInfo.label}</span>}
       </p>
 
-      {/* EMPTY */}
+      {/* ── EMPTY ── */}
       {filtrados.length === 0 && (
         <div className="pr-empty">
           <div className="pr-empty-icon"><i className="ti ti-pill" /></div>
@@ -742,12 +853,12 @@ export default function Productos() {
         </div>
       )}
 
-      {/* GRID */}
+      {/* ── GRID ── */}
       {!vistaLista && filtrados.length > 0 && (
         <div className="pr-grid">
           {filtrados.map((p, i) => {
-            const precio    = p.Productos_Precios?.[0]
-            const precioVal = precio?.precio_venta
+            const precio         = p.Productos_Precios?.[0]
+            const precioVal      = precio?.precio_venta
             const esMasStock     = masStock.includes(p.id_producto)
             const esMenosStock   = menosStock.includes(p.id_producto)
             const esMasVendido   = masVendidos.includes(p.id_producto)
@@ -761,10 +872,10 @@ export default function Productos() {
                     : <i className="ti ti-pill" style={{ fontSize: 36, color: 'var(--ink-4)' }} />
                   }
                   <div className="pr-rank-tags">
-                    {esMasVendido  && <span className="pr-rank-tag pr-rank-tag-sale">Top ventas</span>}
+                    {esMasVendido   && <span className="pr-rank-tag pr-rank-tag-sale">Top ventas</span>}
                     {esMenosVendido && !esMasVendido  && <span className="pr-rank-tag pr-rank-tag-sale-low">Menos vendido</span>}
-                    {esMasStock    && <span className="pr-rank-tag pr-rank-tag-top">Top stock</span>}
-                    {esMenosStock  && !esMasStock     && <span className="pr-rank-tag pr-rank-tag-low">Bajo stock</span>}
+                    {esMasStock     && <span className="pr-rank-tag pr-rank-tag-top">Top stock</span>}
+                    {esMenosStock   && !esMasStock    && <span className="pr-rank-tag pr-rank-tag-low">Bajo stock</span>}
                   </div>
                 </div>
                 <div className="pr-card-body">
@@ -781,7 +892,7 @@ export default function Productos() {
                   <div className="pr-card-sub">{p.principio_activo || p.Categorias?.nombre_categoria || '—'} · {ventasProducto} vendidos</div>
                   <div className="pr-card-foot">
                     {precioVal
-                      ? <span className="pr-card-price">S/ {precioVal.toFixed(2)}</span>
+                      ? <span className="pr-card-price">{mostrarPrecio(precio)}</span>
                       : <span className="pr-card-price-none">—</span>
                     }
                     <span className={`pr-stock ${stockClass(p)}`}>{stockText(p)}</span>
@@ -793,7 +904,7 @@ export default function Productos() {
         </div>
       )}
 
-      {/* LIST */}
+      {/* ── LIST ── */}
       {vistaLista && filtrados.length > 0 && (
         <div className="pr-list-wrap">
           <div className="pr-list-head">
@@ -802,14 +913,16 @@ export default function Productos() {
             ))}
           </div>
           {filtrados.map((p, i) => {
-            const precio    = p.Productos_Precios?.[0]
-            const precioVal = precio?.precio_venta
+            const precio         = p.Productos_Precios?.[0]
+            const precioVal      = precio?.precio_venta
             const esMasStock     = masStock.includes(p.id_producto)
             const esMenosStock   = menosStock.includes(p.id_producto)
             const esMasVendido   = masVendidos.includes(p.id_producto)
             const esMenosVendido = menosVendidos.includes(p.id_producto)
             const ventasProducto = ventasPorProducto[p.id_producto] || 0
-            const vence = p.fecha_vencimiento ? new Date(p.fecha_vencimiento).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'
+            const vence = p.fecha_vencimiento
+              ? new Date(p.fecha_vencimiento + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: '2-digit' })
+              : '—'
             return (
               <div key={p.id_producto} className="pr-list-row" style={{ animationDelay: `${Math.min(i * 0.02, 0.22)}s` }} onClick={() => setProductoSeleccionado(p)}>
                 <div className="pr-list-thumb">
@@ -829,7 +942,7 @@ export default function Productos() {
                 <div><span className="pr-cat-chip">{p.Categorias?.nombre_categoria || '—'}</span></div>
                 <div>
                   {precioVal
-                    ? <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>S/ {precioVal.toFixed(2)}</span>
+                    ? <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>{mostrarPrecio(precio)}</span>
                     : <span style={{ color: 'var(--ink-4)' }}>—</span>
                   }
                 </div>
@@ -841,11 +954,10 @@ export default function Productos() {
         </div>
       )}
 
-      {/* MODAL DETALLE */}
+      {/* ── MODAL DETALLE ── */}
       {productoSeleccionado && (() => {
         const p = productoSeleccionado
-        const precio    = p.Productos_Precios?.[0]
-        const precioVal = precio?.precio_venta
+        const precio = p.Productos_Precios?.[0]
         return (
           <div className="pr-overlay" onClick={() => setProductoSeleccionado(null)}>
             <div className="pr-modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
@@ -869,7 +981,7 @@ export default function Productos() {
                     { label: 'Presentación', val: p.Presentaciones?.nombre_presentacion },
                     { label: 'Stock actual', val: `${p.stock_actual_unidades} unidades`, accent: true },
                     { label: 'Stock mínimo', val: `${p.stock_minimo_unidades} u.` },
-                    { label: 'Vencimiento',  val: p.fecha_vencimiento ? new Date(p.fecha_vencimiento).toLocaleDateString('es-PE') : '—' },
+                    { label: 'Vencimiento',  val: p.fecha_vencimiento ? new Date(p.fecha_vencimiento + 'T00:00:00').toLocaleDateString('es-PE') : '—' },
                     { label: 'Unidad',       val: precio?.Unidades_Medida?.nombre_unidad || '—' },
                   ].map((row, i) => (
                     <div key={i} className="pr-detail-cell">
@@ -879,11 +991,11 @@ export default function Productos() {
                   ))}
                 </div>
 
-                {precioVal && (
+                {precio?.precio_venta && (
                   <div className="pr-price-hero">
                     <div>
                       <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 2 }}>Precio de venta</div>
-                      <div className="pr-price-big">S/ {precioVal.toFixed(2)}</div>
+                      <div className="pr-price-big">{mostrarPrecio(precio)}</div>
                     </div>
                     <span className={`pr-stock ${stockClass(p)}`}>{stockText(p)}</span>
                   </div>
@@ -900,48 +1012,109 @@ export default function Productos() {
         )
       })()}
 
-      {/* MODAL FORMULARIO */}
+      {/* ── MODAL FORMULARIO ── */}
       {mostrarForm && (
-        <div className="pr-overlay" onClick={() => setMostrarForm(false)}>
+        <div className="pr-overlay" onClick={resetForm}>
           <div className="pr-modal" style={{ maxWidth: 560, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div className="pr-modal-head">
               <h3 className="pr-modal-title">{editando ? 'Editar producto' : 'Nuevo producto'}</h3>
-              <button className="pr-btn pr-btn-ghost" style={{ padding: '6px 10px' }} onClick={() => setMostrarForm(false)}>
+              <button className="pr-btn pr-btn-ghost" style={{ padding: '6px 10px' }} onClick={resetForm}>
                 <i className="ti ti-x" style={{ fontSize: 14 }} />
               </button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="pr-modal-body pr-form">
+
                 <p className="pr-section-label">Información general</p>
-                <input className="pr-input" placeholder="Nombre comercial *" value={form.nombre_comercial} onChange={e => setForm({ ...form, nombre_comercial: e.target.value })} required />
-                <input className="pr-input" placeholder="Principio activo" value={form.principio_activo} onChange={e => setForm({ ...form, principio_activo: e.target.value })} />
+
+                <input
+                  className={`pr-input${erroresForm.nombre_comercial ? ' pr-input-error' : ''}`}
+                  placeholder="Nombre comercial *"
+                  value={form.nombre_comercial}
+                  onChange={e => setForm({ ...form, nombre_comercial: e.target.value })}
+                />
+                <ErrMsg campo="nombre_comercial" />
+
+                <input
+                  className="pr-input"
+                  placeholder="Principio activo"
+                  value={form.principio_activo}
+                  onChange={e => setForm({ ...form, principio_activo: e.target.value })}
+                />
+
                 <div className="pr-2col">
-                  <select className="pr-input" value={form.id_laboratorio} onChange={e => setForm({ ...form, id_laboratorio: e.target.value })} required>
-                    <option value="">Laboratorio *</option>
-                    {laboratorios.map(l => <option key={l.id_laboratorio} value={l.id_laboratorio}>{l.nombre_laboratorio}</option>)}
-                  </select>
-                  <select className="pr-input" value={form.id_categoria} onChange={e => setForm({ ...form, id_categoria: e.target.value })} required>
-                    <option value="">Categoría *</option>
-                    {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>)}
-                  </select>
+                  <div>
+                    <select
+                      className={`pr-input${erroresForm.id_laboratorio ? ' pr-input-error' : ''}`}
+                      value={form.id_laboratorio}
+                      onChange={e => setForm({ ...form, id_laboratorio: e.target.value })}
+                    >
+                      <option value="">Laboratorio *</option>
+                      {laboratorios.map(l => <option key={l.id_laboratorio} value={l.id_laboratorio}>{l.nombre_laboratorio}</option>)}
+                    </select>
+                    <ErrMsg campo="id_laboratorio" />
+                  </div>
+                  <div>
+                    <select
+                      className={`pr-input${erroresForm.id_categoria ? ' pr-input-error' : ''}`}
+                      value={form.id_categoria}
+                      onChange={e => setForm({ ...form, id_categoria: e.target.value })}
+                    >
+                      <option value="">Categoría *</option>
+                      {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>)}
+                    </select>
+                    <ErrMsg campo="id_categoria" />
+                  </div>
                 </div>
-                <select className="pr-input" value={form.id_presentacion} onChange={e => setForm({ ...form, id_presentacion: e.target.value })} required>
-                  <option value="">Presentación *</option>
-                  {presentaciones.map(p => <option key={p.id_presentacion} value={p.id_presentacion}>{p.nombre_presentacion}</option>)}
-                </select>
+
+                <div>
+                  <select
+                    className={`pr-input${erroresForm.id_presentacion ? ' pr-input-error' : ''}`}
+                    value={form.id_presentacion}
+                    onChange={e => setForm({ ...form, id_presentacion: e.target.value })}
+                  >
+                    <option value="">Presentación *</option>
+                    {presentaciones.map(p => <option key={p.id_presentacion} value={p.id_presentacion}>{p.nombre_presentacion}</option>)}
+                  </select>
+                  <ErrMsg campo="id_presentacion" />
+                </div>
 
                 <hr className="pr-divider" />
                 <p className="pr-section-label">Imagen del producto</p>
-                {imagenPreview && <img src={imagenPreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: 140, borderRadius: 10, border: '1px solid var(--border)', objectFit: 'cover' }} />}
-                <input type="file" accept="image/*" onChange={e => { const f = e.target.files[0]; if (f) { setImagenFile(f); setImagenPreview(URL.createObjectURL(f)) } }} style={{ fontSize: 12, color: 'var(--ink-3)' }} />
+                {imagenPreview && (
+                  <img src={imagenPreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: 140, borderRadius: 10, border: '1px solid var(--border)', objectFit: 'cover' }} />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={e => {
+                    const f = e.target.files[0]
+                    if (f) {
+                      setImagenFile(f)
+                      setImagenPreview(URL.createObjectURL(f))
+                      setForm({ ...form, imagen_url: '' })
+                    }
+                  }}
+                  style={{ fontSize: 12, color: 'var(--ink-3)' }}
+                />
                 {uploading && <small style={{ color: 'var(--accent)' }}>Subiendo imagen...</small>}
 
                 <hr className="pr-divider" />
                 <p className="pr-section-label">Precio de venta</p>
                 <div className="pr-3col">
-                  <input type="number" step="0.01" min="0" placeholder="Precio" value={form.precio_venta} onChange={e => setForm({ ...form, precio_venta: e.target.value })} className="pr-input" />
+                  <div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Precio"
+                      value={form.precio_venta}
+                      onChange={e => setForm({ ...form, precio_venta: e.target.value })}
+                      className={`pr-input${erroresForm.precio_venta ? ' pr-input-error' : ''}`}
+                    />
+                    <ErrMsg campo="precio_venta" />
+                  </div>
                   <select className="pr-input" value={form.id_unidad} onChange={e => setForm({ ...form, id_unidad: e.target.value })}>
-                    <option value="">Unidad</option>
                     {unidades.map(u => <option key={u.id_unidad} value={u.id_unidad}>{u.nombre_unidad}</option>)}
                   </select>
                   <select className="pr-input" value={form.id_moneda} onChange={e => setForm({ ...form, id_moneda: e.target.value })}>
@@ -952,15 +1125,32 @@ export default function Productos() {
                 <hr className="pr-divider" />
                 <p className="pr-section-label">Inventario</p>
                 <div className="pr-2col">
-                  <input type="number" placeholder="Stock actual" value={form.stock_actual_unidades} onChange={e => setForm({ ...form, stock_actual_unidades: parseInt(e.target.value) })} className="pr-input" required />
-                  <input type="number" placeholder="Stock mínimo" value={form.stock_minimo_unidades} onChange={e => setForm({ ...form, stock_minimo_unidades: parseInt(e.target.value) })} className="pr-input" />
+                  <input
+                    type="number"
+                    placeholder="Stock actual"
+                    value={form.stock_actual_unidades}
+                    onChange={e => setForm({ ...form, stock_actual_unidades: e.target.value })}
+                    className="pr-input"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Stock mínimo"
+                    value={form.stock_minimo_unidades}
+                    onChange={e => setForm({ ...form, stock_minimo_unidades: e.target.value })}
+                    className="pr-input"
+                  />
                 </div>
-                <input type="date" value={form.fecha_vencimiento} onChange={e => setForm({ ...form, fecha_vencimiento: e.target.value })} className="pr-input" />
+                <input
+                  type="date"
+                  value={form.fecha_vencimiento}
+                  onChange={e => setForm({ ...form, fecha_vencimiento: e.target.value })}
+                  className="pr-input"
+                />
               </div>
               <div className="pr-modal-foot">
-                <button type="button" className="pr-btn pr-btn-ghost" onClick={() => setMostrarForm(false)}>Cancelar</button>
+                <button type="button" className="pr-btn pr-btn-ghost" onClick={resetForm}>Cancelar</button>
                 <button type="submit" className="pr-btn pr-btn-primary" disabled={uploading}>
-                  {editando ? 'Guardar cambios' : 'Crear producto'}
+                  {uploading ? 'Subiendo...' : editando ? 'Guardar cambios' : 'Crear producto'}
                 </button>
               </div>
             </form>
@@ -968,7 +1158,7 @@ export default function Productos() {
         </div>
       )}
 
-      {/* CONFIRM DELETE */}
+      {/* ── CONFIRM DELETE ── */}
       {confirmDelete && (
         <div className="pr-overlay" onClick={() => setConfirmDelete(null)}>
           <div className="pr-modal" style={{ maxWidth: 360, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
@@ -987,10 +1177,11 @@ export default function Productos() {
         </div>
       )}
 
-      {/* TOAST */}
+      {/* ── TOAST ── */}
       {toast && (
         <div className="pr-toast">
-          <i className={`ti ${toast.tipo === 'success' ? 'ti-circle-check' : 'ti-circle-x'}`} style={{ fontSize: 17, color: toast.tipo === 'success' ? 'var(--accent)' : '#f87171', flexShrink: 0 }} />
+          <i className={`ti ${toast.tipo === 'success' ? 'ti-circle-check' : 'ti-circle-x'}`}
+            style={{ fontSize: 17, color: toast.tipo === 'success' ? 'var(--accent)' : '#f87171', flexShrink: 0 }} />
           {toast.mensaje}
         </div>
       )}
