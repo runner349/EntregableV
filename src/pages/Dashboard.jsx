@@ -104,6 +104,7 @@ const BarChart = ({ data, maxValue = 100 }) => (
 export default function Dashboard() {
   const [ventas, setVentas] = useState([])
   const [productos, setProductos] = useState([])
+  const [detallesVentas, setDetallesVentas] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { cargarDatos() }, [])
@@ -111,12 +112,14 @@ export default function Dashboard() {
   const cargarDatos = async () => {
     setLoading(true)
     try {
-      const [{ data: ventasData }, { data: productosData }] = await Promise.all([
-        supabase.from('Ventas').select('*, Clientes(*), Tipos_Comprobantes(*)').order('fecha_hora', { ascending: false }).limit(50),
+      const [{ data: ventasData }, { data: productosData }, { data: detallesData }] = await Promise.all([
+        supabase.from('Ventas').select('*, Clientes(*), Tipos_Comprobantes(*)').order('fecha_hora', { ascending: false }).limit(100),
         supabase.from('Productos').select('*, Productos_Precios(*), Categorias(*)').eq('estado', true).order('nombre_comercial'),
+        supabase.from('Detalle_Ventas').select('*, Productos(*)').limit(500),
       ])
       setVentas(ventasData || [])
       setProductos(productosData || [])
+      setDetallesVentas(detallesData || [])
     } catch (e) { console.error(e) }
     finally { setTimeout(() => setLoading(false), 800) }
   }
@@ -127,7 +130,23 @@ export default function Dashboard() {
   const numTransacciones = ventasCompletadas.length
   const lowStock = useMemo(() => productos.filter(p => p.stock_actual_unidades <= p.stock_minimo_unidades), [productos])
 
-  const topProductos = useMemo(() => {
+  // ============================================
+  // PRODUCTOS MÁS Y MENOS VENDIDOS
+  // ============================================
+  const rankingProductos = useMemo(() => {
+    const conteo = {}
+    detallesVentas.forEach(d => {
+      const nombre = d.Productos?.nombre_comercial || 'Desconocido'
+      conteo[nombre] = (conteo[nombre] || 0) + (d.cantidad || 0)
+    })
+    const ordenados = Object.entries(conteo).sort((a, b) => b[1] - a[1])
+    return {
+      masVendido: ordenados.slice(0, 5),
+      menosVendido: ordenados.slice(-5).reverse(),
+    }
+  }, [detallesVentas])
+
+  const topClientes = useMemo(() => {
     const conteo = {}
     ventasCompletadas.forEach(v => { const n = v.Clientes?.nombres_razon_social || 'General'; conteo[n] = (conteo[n] || 0) + 1 })
     return Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 5)
@@ -176,7 +195,7 @@ export default function Dashboard() {
         <KpiCard label="Stock crítico" value={lowStock.length} icon="ti-alert-triangle" trend={-3} delay={0.3} />
       </div>
 
-      {/* GRÁFICO + TOP */}
+      {/* GRÁFICO + TOP CLIENTES */}
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 18, marginBottom: 28 }}>
         <div style={{ background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 20, padding: '24px', animation: 'fadeUp 0.6s 0.4s ease both' }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(34,197,94,0.3)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.8)'; }}
@@ -192,9 +211,9 @@ export default function Dashboard() {
         <div style={{ background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 20, padding: '24px', animation: 'fadeUp 0.6s 0.5s ease both' }}>
           <h3 style={{ margin: '0 0 20px', fontSize: 16, color: '#FFF' }}>Top Clientes</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {topProductos.length === 0 ? <p style={{ color: '#666', textAlign: 'center', padding: 30 }}>Sin datos</p> :
-              topProductos.map(([name, count], i) => {
-                const max = topProductos[0][1]; const pct = Math.round((count / max) * 100)
+            {topClientes.length === 0 ? <p style={{ color: '#666', textAlign: 'center', padding: 30 }}>Sin datos</p> :
+              topClientes.map(([name, count], i) => {
+                const max = topClientes[0][1]; const pct = Math.round((count / max) * 100)
                 return (
                   <div key={i} style={{ animation: `fadeUp 0.4s ${0.6 + i * 0.06}s both` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -211,8 +230,51 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* STOCK CRÍTICO */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 28, animation: 'fadeUp 0.6s 0.7s ease both' }}>
+      {/* PRODUCTOS MÁS Y MENOS VENDIDOS */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginBottom: 28 }}>
+        {/* MÁS VENDIDOS */}
+        <div style={{ background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 20, padding: '24px', animation: 'fadeUp 0.6s 0.6s ease both' }}>
+          <h3 style={{ margin: '0 0 18px', fontSize: 16, color: '#22C55E', display: 'flex', alignItems: 'center', gap: 8 }}>
+            🔥 Más Vendidos
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {rankingProductos.masVendido.length === 0 ? (
+              <p style={{ color: '#666', textAlign: 'center', padding: 20 }}>Sin datos</p>
+            ) : rankingProductos.masVendido.map(([nombre, cantidad], i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, animation: `fadeUp 0.4s ${0.7 + i * 0.05}s both` }}>
+                <span style={{ width: 24, height: 24, borderRadius: '50%', background: i === 0 ? '#22C55E' : '#1A1A1A', color: i === 0 ? '#000' : '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+                  {i + 1}
+                </span>
+                <span style={{ flex: 1, fontSize: 13, color: '#FFF' }}>{nombre}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#22C55E', fontFamily: "'DM Mono', monospace" }}>{cantidad} u.</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* MENOS VENDIDOS */}
+        <div style={{ background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 20, padding: '24px', animation: 'fadeUp 0.6s 0.7s ease both' }}>
+          <h3 style={{ margin: '0 0 18px', fontSize: 16, color: '#EF4444', display: 'flex', alignItems: 'center', gap: 8 }}>
+            📉 Menos Vendidos
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {rankingProductos.menosVendido.length === 0 ? (
+              <p style={{ color: '#666', textAlign: 'center', padding: 20 }}>Sin datos</p>
+            ) : rankingProductos.menosVendido.map(([nombre, cantidad], i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, animation: `fadeUp 0.4s ${0.8 + i * 0.05}s both` }}>
+                <span style={{ width: 24, height: 24, borderRadius: '50%', background: '#1A1A1A', color: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+                  {i + 1}
+                </span>
+                <span style={{ flex: 1, fontSize: 13, color: '#FFF' }}>{nombre}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#EF4444', fontFamily: "'DM Mono', monospace" }}>{cantidad} u.</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ALERTAS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 28, animation: 'fadeUp 0.6s 0.9s ease both' }}>
         <div style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.15)', borderLeft: '3px solid #EF4444', borderRadius: 14, padding: '16px 20px', display: 'flex', gap: 12, alignItems: 'center' }}>
           <span style={{ fontSize: 22 }}>⚠️</span>
           <div><strong style={{ display: 'block', color: '#EF4444', fontSize: 13 }}>Stock crítico detectado</strong><span style={{ color: '#666', fontSize: 11 }}>{lowStock.length} productos bajo el mínimo</span></div>
@@ -224,7 +286,7 @@ export default function Dashboard() {
       </div>
 
       {/* ÚLTIMAS VENTAS */}
-      <div style={{ background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 20, overflow: 'hidden', animation: 'fadeUp 0.6s 0.8s ease both' }}>
+      <div style={{ background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 20, overflow: 'hidden', animation: 'fadeUp 0.6s 1.0s ease both' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #1A1A1A', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -251,7 +313,7 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {ventasCompletadas.slice(0, 8).map((v, i) => (
-                <tr key={v.id_venta} style={{ animation: `fadeUp 0.4s ${0.9 + i * 0.04}s both` }}
+                <tr key={v.id_venta} style={{ animation: `fadeUp 0.4s ${1.1 + i * 0.04}s both` }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(34,197,94,0.03)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
