@@ -102,7 +102,7 @@ export default function Login() {
               </button>
             </form>
 
-            <span className="forgot">¿Olvidaste tu contraseña?</span>
+            <span className="forgot">Nova Salud</span>
           </div>
         </div>
 
