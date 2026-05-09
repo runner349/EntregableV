@@ -3,15 +3,395 @@ import { supabase } from '../lib/supabase'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
-// ============================================
-// SKELETON
-// ============================================
-const Skeleton = ({ width, height, radius = 12 }) => (
-  <div style={{
-    width: width || '100%', height: height || 20, borderRadius: radius,
-    background: 'linear-gradient(90deg, #0A0A0A 25%, #111 50%, #0A0A0A 75%)',
-    backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite',
-  }} />
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Sans:wght@400;500;600&display=swap');
+
+  .hv-root, .hv-root * {
+    box-sizing: border-box;
+    font-style: normal;
+  }
+
+  .hv-root {
+    --ink: #0a0a0a;
+    --ink-2: #3d3d3d;
+    --ink-3: #8a8a8a;
+    --ink-4: #c4c4c4;
+    --surface: #ffffff;
+    --surface-2: #f5f5f3;
+    --surface-3: #ebebea;
+    --accent: #00c37a;
+    --accent-dim: rgba(0,195,122,0.10);
+    --accent-mid: rgba(0,195,122,0.22);
+    --danger: #e53535;
+    --danger-dim: rgba(229,53,53,0.10);
+    --border: #e4e4e2;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 24px rgba(0,0,0,0.10);
+    font-family: 'Instrument Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--ink);
+    background: var(--surface);
+    padding: 0;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .hv-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .hv-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-mid);
+    border-radius: 100px;
+    padding: 4px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .hv-badge-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .hv-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 30px;
+    font-weight: 800;
+    font-style: normal;
+    color: var(--ink);
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .hv-subtitle {
+    font-size: 13px;
+    color: var(--ink-3);
+    margin: 0;
+  }
+  .hv-header-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* ── Buttons ── */
+  .hv-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 9px 14px;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    font-style: normal;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .hv-btn-ghost {
+    background: var(--surface-2);
+    color: var(--ink-2);
+    border: 1px solid var(--border);
+  }
+  .hv-btn-ghost:hover { background: var(--surface-3); }
+  .hv-btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+  .hv-btn-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--ink-3);
+    cursor: pointer;
+    transition: all 0.15s;
+    padding: 0;
+    font-size: 14px;
+  }
+  .hv-btn-icon:hover { background: var(--surface-3); color: var(--ink); }
+  .hv-btn-icon.danger:hover { background: var(--danger-dim); color: var(--danger); border-color: rgba(229,53,53,0.2); }
+
+  /* ── Filters ── */
+  .hv-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .hv-input {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 13px;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 12px;
+    font-style: normal;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .hv-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+    background: var(--surface);
+  }
+  .hv-input::placeholder { color: var(--ink-4); }
+  .hv-filter-sep {
+    width: 1px; height: 24px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .hv-filter-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+
+  /* ── Table card ── */
+  .hv-table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .hv-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .hv-table thead tr {
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .hv-table th {
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    font-style: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+  .hv-table td {
+    padding: 10px 16px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .hv-table tbody tr:last-child td { border-bottom: none; }
+  .hv-table tbody tr { transition: background 0.1s; }
+  .hv-table tbody tr:hover { background: var(--surface-2); }
+
+  /* ── Cells ── */
+  .hv-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    font-style: normal;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    padding: 3px 9px;
+    border-radius: 6px;
+    color: var(--ink-2);
+    letter-spacing: 0.04em;
+    display: inline-block;
+  }
+  .hv-date {
+    font-size: 11px;
+    color: var(--ink-3);
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+  }
+  .hv-amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    font-style: normal;
+    color: var(--ink);
+  }
+  .hv-client {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-2);
+  }
+  .hv-actions { display: flex; gap: 5px; }
+
+  /* ── Tags / Badges ── */
+  .hv-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 700;
+    font-style: normal;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .hv-tag-boleta {
+    background: rgba(59,130,246,0.10);
+    color: #2563eb;
+    border: 1px solid rgba(59,130,246,0.20);
+  }
+  .hv-tag-factura {
+    background: rgba(168,85,247,0.10);
+    color: #7c3aed;
+    border: 1px solid rgba(168,85,247,0.20);
+  }
+  .hv-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 700;
+    font-style: normal;
+    letter-spacing: 0.04em;
+  }
+  .hv-status-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .hv-status-ok {
+    background: var(--accent-dim);
+    color: #059652;
+    border: 1px solid var(--accent-mid);
+  }
+  .hv-status-ok .hv-status-dot { background: var(--accent); }
+  .hv-status-bad {
+    background: var(--danger-dim);
+    color: var(--danger);
+    border: 1px solid rgba(229,53,53,0.20);
+  }
+  .hv-status-bad .hv-status-dot { background: var(--danger); }
+
+  /* ── Empty state ── */
+  .hv-empty {
+    text-align: center;
+    padding: 56px 0;
+    color: var(--ink-4);
+  }
+  .hv-empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.35; }
+  .hv-empty-title { font-size: 14px; font-weight: 600; color: var(--ink-3); margin-bottom: 4px; }
+  .hv-empty-sub { font-size: 12px; color: var(--ink-4); }
+
+  /* ── Skeleton ── */
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .hv-skeleton {
+    border-radius: 8px;
+    background: linear-gradient(90deg, #f0f0ee 25%, #e8e8e6 50%, #f0f0ee 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* ── Modal ── */
+  .hv-overlay {
+    position: fixed; inset: 0;
+    background: rgba(10,10,10,0.55);
+    backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 99999;
+    animation: hv-fade 0.18s ease;
+  }
+  @keyframes hv-fade { from { opacity: 0; } to { opacity: 1; } }
+  .hv-modal {
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+    animation: hv-up 0.20s ease;
+    width: 90%;
+  }
+  @keyframes hv-up { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .hv-modal-title {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 17px;
+    font-weight: 800;
+    font-style: normal;
+    color: var(--ink);
+    margin: 0 0 18px;
+    letter-spacing: -0.01em;
+  }
+  .hv-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .hv-modal-icon {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px;
+    font-size: 26px;
+  }
+  .hv-modal-center { text-align: center; }
+  .hv-modal-center .hv-modal-title { text-align: center; }
+
+  /* ── Confirm danger button ── */
+  .hv-btn-danger {
+    background: var(--danger);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 9px 18px;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    font-style: normal;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .hv-btn-danger:hover { background: #c42222; box-shadow: 0 4px 16px rgba(229,53,53,0.25); }
+
+  .hv-btn-primary {
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 9px 18px;
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    font-style: normal;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .hv-btn-primary:hover { background: #222; }
+`
+
+const SkeletonRow = () => (
+  <tr>
+    {[140, 80, 110, 160, 70, 70, 60].map((w, i) => (
+      <td key={i} style={{ padding: '12px 16px' }}>
+        <div className="hv-skeleton" style={{ width: w, height: 14 }} />
+      </td>
+    ))}
+  </tr>
 )
 
 export default function Historial() {
@@ -68,23 +448,18 @@ export default function Historial() {
     setDetalleVenta({ id: idVenta, items: data || [] })
   }
 
-  const handleAnular = (idVenta) => {
-    setConfirmAnular(idVenta)
-  }
-
   const confirmarAnulacion = async () => {
     if (!confirmAnular) return
     const { error } = await supabase.from('Ventas').update({ estado: 'Anulada' }).eq('id_venta', confirmAnular)
     if (error) {
-      setNotificacion({ tipo: 'error', mensaje: '❌ Error: ' + error.message })
+      setNotificacion({ tipo: 'error', mensaje: 'Error al anular: ' + error.message })
     } else {
-      setNotificacion({ tipo: 'success', mensaje: '✅ Venta anulada correctamente. Stock devuelto.' })
+      setNotificacion({ tipo: 'success', mensaje: 'Venta anulada correctamente.' })
     }
     setConfirmAnular(null)
     cargarTodasLasVentas()
   }
 
-  // 📥 EXPORTAR CSV
   const exportarCSV = () => {
     if (!ventas.length) return
     let csv = 'Comprobante,Tipo,Fecha,Cliente,Total,Estado\n'
@@ -100,7 +475,6 @@ export default function Historial() {
     URL.revokeObjectURL(url)
   }
 
-  // 📄 EXPORTAR PDF
   const exportarPDF = () => {
     if (!ventas.length) return
     const doc = new jsPDF()
@@ -108,7 +482,6 @@ export default function Historial() {
     doc.text('Nova Salud - Historial de Ventas', 14, 20)
     doc.setFontSize(10)
     doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 28)
-
     const tabla = ventas.map(v => [
       `${v.serie_documento}-${v.numero_documento}`,
       v.Tipos_Comprobantes?.nombre_documento || '',
@@ -117,109 +490,126 @@ export default function Historial() {
       `S/ ${v.total?.toFixed(2)}`,
       v.estado
     ])
-
     autoTable(doc, {
       head: [['Comprobante', 'Tipo', 'Fecha', 'Cliente', 'Total', 'Estado']],
       body: tabla,
       startY: 35,
-      styles: { fontSize: 8, cellPadding: 3, textColor: [255, 255, 255], fillColor: [10, 10, 10] },
-      headStyles: { fillColor: [34, 197, 94], textColor: [0, 0, 0], fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [15, 15, 15] },
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: [0, 195, 122], textColor: [0, 0, 0], fontStyle: 'bold' },
       theme: 'grid',
     })
-
     doc.save(`historial_ventas_${new Date().toISOString().split('T')[0]}.pdf`)
   }
 
-  const inputStyle = { background: '#050505', border: '1px solid #1A1A1A', borderRadius: 12, padding: '9px 14px', color: '#FFF', fontSize: 12, fontFamily: "'Inter', sans-serif", outline: 'none' }
-  const selectStyle = { ...inputStyle, cursor: 'pointer' }
-
-  if (loading) {
-    return (
-      <div style={{ padding: 28, background: '#000', minHeight: '100vh' }}>
-        <div style={{ marginBottom: 28 }}><Skeleton width={200} height={36} /><div style={{ marginTop: 8 }}><Skeleton width={280} height={18} /></div></div>
-        <div style={{ background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 20, padding: 24 }}><Skeleton width="100%" height={300} /></div>
-      </div>
-    )
-  }
-
   return (
-    <div style={{ padding: '8px 0', background: '#000', color: '#FFF', fontFamily: "'Inter', 'DM Sans', sans-serif" }}>
+    <div className="hv-root">
+      <style>{styles}</style>
+
       {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 14 }}>
-        <div className="fade-in">
-          <h1 style={{ margin: '0 0 4px', fontSize: 30, fontWeight: 800, color: '#FFF', letterSpacing: '-0.03em' }}>Historial de ventas</h1>
-          <p style={{ margin: 0, color: '#666', fontSize: 13 }}>{ventas.length} movimientos registrados</p>
+      <div className="hv-header">
+        <div>
+          <div className="hv-badge">
+            <div className="hv-badge-dot" />
+            Registro de ventas
+          </div>
+          <h1 className="hv-title">Historial de ventas</h1>
+          <p className="hv-subtitle">{loading ? '—' : `${ventas.length} movimientos registrados`}</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn" onClick={exportarCSV} disabled={!ventas.length}>
-            <i className="ti ti-file-spreadsheet" style={{ fontSize: 14 }} /> CSV
+        <div className="hv-header-actions">
+          <button className="hv-btn hv-btn-ghost" onClick={exportarCSV} disabled={!ventas.length}>
+            <i className="ti ti-file-spreadsheet" style={{ fontSize: 13 }} /> CSV
           </button>
-          <button className="btn" onClick={exportarPDF} disabled={!ventas.length}>
-            <i className="ti ti-file-pdf" style={{ fontSize: 14 }} /> PDF
+          <button className="hv-btn hv-btn-ghost" onClick={exportarPDF} disabled={!ventas.length}>
+            <i className="ti ti-file-pdf" style={{ fontSize: 13 }} /> PDF
           </button>
         </div>
       </div>
 
       {/* FILTROS */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-        <input placeholder="Buscar por N° o cliente..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={{ ...inputStyle, maxWidth: 240 }} />
-        <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ ...selectStyle, maxWidth: 130 }}>
+      <div className="hv-filters">
+        <input
+          className="hv-input"
+          placeholder="Buscar por N° o cliente..."
+          value={busqueda}
+          onChange={e => setBusqueda(e.target.value)}
+          style={{ minWidth: 220 }}
+        />
+        <div className="hv-filter-sep" />
+        <span className="hv-filter-label">Tipo</span>
+        <select className="hv-input" value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ width: 120 }}>
           <option value="Todos">Todos</option>
           <option value="Boleta">Boleta</option>
           <option value="Factura">Factura</option>
         </select>
-        <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} style={{ ...inputStyle, maxWidth: 150 }} />
-        <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} style={{ ...inputStyle, maxWidth: 150 }} />
+        <div className="hv-filter-sep" />
+        <span className="hv-filter-label">Desde</span>
+        <input type="date" className="hv-input" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} style={{ width: 145 }} />
+        <span className="hv-filter-label">Hasta</span>
+        <input type="date" className="hv-input" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} style={{ width: 145 }} />
         <div style={{ flex: 1 }} />
-        <button className="btn" onClick={cargarTodasLasVentas}>
-          <i className="ti ti-refresh" style={{ fontSize: 14 }} />
+        <button className="hv-btn-icon" title="Actualizar" onClick={cargarTodasLasVentas}>
+          <i className="ti ti-refresh" />
         </button>
       </div>
 
       {/* TABLA */}
-      <div style={{ background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 20, overflow: 'hidden' }}>
+      <div className="hv-table-card">
         <div style={{ overflowX: 'auto' }}>
-          <table className="data-table">
+          <table className="hv-table">
             <thead>
               <tr>
-                {['Comprobante', 'Tipo', 'Fecha', 'Cliente', 'Total', 'Estado', 'Acciones'].map(h => <th key={h} style={{ padding: '12px 16px' }}>{h}</th>)}
+                {['Comprobante', 'Tipo', 'Fecha', 'Cliente', 'Total', 'Estado', 'Acciones'].map(h => (
+                  <th key={h}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {ventas.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 50 }}>
-                  <i className="ti ti-receipt-off" style={{ fontSize: 40, color: '#1A1A1A', display: 'block', marginBottom: 12 }} />
-                  <strong style={{ color: '#FFF' }}>No se encontraron ventas</strong>
-                </td></tr>
-              ) : ventas.map((v, i) => (
-                <tr key={v.id_venta} style={{ animation: `fadeUp 0.4s ${0.1 + i * 0.04}s both` }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(34,197,94,0.03)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <td style={{ padding: '10px 16px' }}>
-                    <span style={{ fontWeight: 700, fontFamily: "'DM Mono', monospace", background: '#111', padding: '4px 10px', borderRadius: 6, fontSize: 12 }}>
-                      {v.serie_documento}-{v.numero_documento}
-                    </span>
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
+              ) : ventas.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>
+                    <div className="hv-empty">
+                      <div className="hv-empty-icon"><i className="ti ti-receipt-off" /></div>
+                      <div className="hv-empty-title">No se encontraron ventas</div>
+                      <div className="hv-empty-sub">Prueba ajustando los filtros</div>
+                    </div>
                   </td>
-                  <td style={{ padding: '10px 16px' }}>
-                    <span className={v.Tipos_Comprobantes?.nombre_documento === 'Boleta' ? 'tag-boleta' : 'tag-factura'}>
+                </tr>
+              ) : ventas.map(v => (
+                <tr key={v.id_venta}>
+                  <td>
+                    <span className="hv-code">{v.serie_documento}-{v.numero_documento}</span>
+                  </td>
+                  <td>
+                    <span className={`hv-tag ${v.Tipos_Comprobantes?.nombre_documento === 'Boleta' ? 'hv-tag-boleta' : 'hv-tag-factura'}`}>
                       {v.Tipos_Comprobantes?.nombre_documento}
                     </span>
                   </td>
-                  <td style={{ padding: '10px 16px', fontSize: 11, color: '#666' }}>{new Date(v.fecha_hora).toLocaleString()}</td>
-                  <td style={{ padding: '10px 16px' }}>{v.Clientes?.nombres_razon_social || 'Público'}</td>
-                  <td style={{ padding: '10px 16px', fontWeight: 700, color: '#22C55E', fontFamily: "'DM Mono', monospace" }}>S/ {v.total?.toFixed(2)}</td>
-                  <td style={{ padding: '10px 16px' }}>
-                    <span className={`badge ${v.estado === 'Completada' ? 'badge-success' : 'badge-danger'}`}>
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: v.estado === 'Completada' ? '#22C55E' : '#EF4444' }} /> {v.estado}
+                  <td>
+                    <span className="hv-date">{new Date(v.fecha_hora).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                  </td>
+                  <td>
+                    <span className="hv-client">{v.Clientes?.nombres_razon_social || 'Público'}</span>
+                  </td>
+                  <td>
+                    <span className="hv-amount">S/ {v.total?.toFixed(2)}</span>
+                  </td>
+                  <td>
+                    <span className={`hv-status ${v.estado === 'Completada' ? 'hv-status-ok' : 'hv-status-bad'}`}>
+                      <span className="hv-status-dot" />
+                      {v.estado}
                     </span>
                   </td>
-                  <td style={{ padding: '10px 16px' }}>
-                    <div style={{ display: 'flex', gap: 5 }}>
-                      <button className="icon-btn" title="Ver detalle" onClick={() => verDetalle(v.id_venta)}><i className="ti ti-eye" style={{ fontSize: 15 }} /></button>
+                  <td>
+                    <div className="hv-actions">
+                      <button className="hv-btn-icon" title="Ver detalle" onClick={() => verDetalle(v.id_venta)}>
+                        <i className="ti ti-eye" />
+                      </button>
                       {v.estado === 'Completada' && (
-                        <button className="icon-btn danger" title="Anular venta" onClick={() => handleAnular(v.id_venta)}><i className="ti ti-x" style={{ fontSize: 15 }} /></button>
+                        <button className="hv-btn-icon danger" title="Anular venta" onClick={() => setConfirmAnular(v.id_venta)}>
+                          <i className="ti ti-x" />
+                        </button>
                       )}
                     </div>
                   </td>
@@ -232,91 +622,48 @@ export default function Historial() {
 
       {/* MODAL DETALLE */}
       {detalleVenta && (
-        <div className="modal-overlay" onClick={() => setDetalleVenta(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 550 }}>
-            <h3 style={{ margin: '0 0 18px', fontSize: 18, fontWeight: 700, color: '#FFF' }}>Detalle de venta</h3>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  {['Producto', 'Cantidad', 'Precio Unit.', 'Subtotal'].map(h => <th key={h} style={{ padding: '10px 14px' }}>{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {detalleVenta.items.length === 0 ? (
-                  <tr><td colSpan={4} style={{ textAlign: 'center', padding: 30, color: '#666' }}>No hay productos</td></tr>
-                ) : detalleVenta.items.map((item, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: '10px 14px' }}>{item.Productos?.nombre_comercial || 'Producto #' + item.id_producto}</td>
-                    <td style={{ padding: '10px 14px' }}>{item.cantidad}</td>
-                    <td style={{ padding: '10px 14px', color: '#22C55E', fontFamily: "'DM Mono', monospace" }}>S/ {item.precio_unitario?.toFixed(2)}</td>
-                    <td style={{ padding: '10px 14px', fontWeight: 700, color: '#22C55E', fontFamily: "'DM Mono', monospace" }}>S/ {item.subtotal?.toFixed(2)}</td>
+        <div className="hv-overlay" onClick={() => setDetalleVenta(null)}>
+          <div className="hv-modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+            <h3 className="hv-modal-title">Detalle de venta</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="hv-table" style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                <thead>
+                  <tr>
+                    {['Producto', 'Cantidad', 'Precio unit.', 'Subtotal'].map(h => <th key={h}>{h}</th>)}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <div style={{ textAlign: 'right', marginTop: 16 }}>
-              <button className="btn btn-secondary" onClick={() => setDetalleVenta(null)}>Cerrar</button>
+                </thead>
+                <tbody>
+                  {detalleVenta.items.length === 0 ? (
+                    <tr><td colSpan={4} style={{ textAlign: 'center', padding: 28, color: 'var(--ink-3)', fontSize: 13 }}>Sin productos</td></tr>
+                  ) : detalleVenta.items.map((item, i) => (
+                    <tr key={i}>
+                      <td style={{ fontWeight: 500 }}>{item.Productos?.nombre_comercial || 'Producto #' + item.id_producto}</td>
+                      <td style={{ textAlign: 'center' }}>{item.cantidad}</td>
+                      <td><span className="hv-amount" style={{ fontSize: 12 }}>S/ {item.precio_unitario?.toFixed(2)}</span></td>
+                      <td><span className="hv-amount">S/ {item.subtotal?.toFixed(2)}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="hv-modal-footer">
+              <button className="hv-btn hv-btn-ghost" onClick={() => setDetalleVenta(null)}>Cerrar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL CONFIRMACIÓN ANULAR */}
+      {/* MODAL CONFIRMAR ANULAR */}
       {confirmAnular && (
-        <div className="modal-overlay" onClick={() => setConfirmAnular(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, textAlign: 'center' }}>
-            {/* Icono de advertencia */}
-            <div style={{
-              width: 64,
-              height: 64,
-              borderRadius: '50%',
-              background: 'rgba(239, 68, 68, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-              fontSize: 30
-            }}>
-              ⚠️
-            </div>
-
-            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#FFF' }}>
-              ¿Anular esta venta?
-            </h3>
-            <p style={{ margin: '0 0 6px', color: '#666', fontSize: 14 }}>
-              Esta acción no se puede deshacer.
-            </p>
-            <p style={{ margin: '0 0 20px', color: '#22C55E', fontSize: 13, fontWeight: 600 }}>
-              ✅ El stock se devolverá automáticamente al inventario.
-            </p>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setConfirmAnular(null)}
-                style={{ padding: '10px 24px', fontSize: 14 }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarAnulacion}
-                style={{
-                  padding: '10px 24px',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  background: '#EF4444',
-                  color: '#FFF',
-                  border: 'none',
-                  borderRadius: 12,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 6px 20px rgba(239, 68, 68, 0.25)',
-                }}
-                onMouseEnter={e => e.target.style.background = '#DC2626'}
-                onMouseLeave={e => e.target.style.background = '#EF4444'}
-              >
-                Sí, anular venta
-              </button>
+        <div className="hv-overlay" onClick={() => setConfirmAnular(null)}>
+          <div className="hv-modal hv-modal-center" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+            <div className="hv-modal-icon" style={{ background: 'var(--danger-dim)', border: '1px solid rgba(229,53,53,0.18)' }}>⚠️</div>
+            <h3 className="hv-modal-title">¿Anular esta venta?</h3>
+            <p style={{ fontSize: 13, color: 'var(--ink-3)', margin: '0 0 8px' }}>Esta acción no se puede deshacer.</p>
+            <p style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600, margin: '0 0 22px' }}>El stock se devolverá automáticamente al inventario.</p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+              <button className="hv-btn hv-btn-ghost" onClick={() => setConfirmAnular(null)}>Cancelar</button>
+              <button className="hv-btn-danger" onClick={confirmarAnulacion}>Sí, anular</button>
             </div>
           </div>
         </div>
@@ -324,23 +671,13 @@ export default function Historial() {
 
       {/* MODAL NOTIFICACIÓN */}
       {notificacion && (
-        <div className="modal-overlay" onClick={() => setNotificacion(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 380, textAlign: 'center' }}>
-            <div style={{
-              width: 56,
-              height: 56,
-              borderRadius: '50%',
-              background: notificacion.tipo === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 14px',
-              fontSize: 24
-            }}>
+        <div className="hv-overlay" onClick={() => setNotificacion(null)}>
+          <div className="hv-modal hv-modal-center" style={{ maxWidth: 360 }} onClick={e => e.stopPropagation()}>
+            <div className="hv-modal-icon" style={{ background: notificacion.tipo === 'success' ? 'var(--accent-dim)' : 'var(--danger-dim)' }}>
               {notificacion.tipo === 'success' ? '✅' : '❌'}
             </div>
-            <p style={{ color: '#FFF', fontSize: 15, margin: '0 0 18px' }}>{notificacion.mensaje}</p>
-            <button className="btn btn-primary" onClick={() => setNotificacion(null)}>Continuar</button>
+            <p style={{ fontSize: 14, color: 'var(--ink)', margin: '0 0 20px', fontWeight: 500 }}>{notificacion.mensaje}</p>
+            <button className="hv-btn-primary" onClick={() => setNotificacion(null)}>Continuar</button>
           </div>
         </div>
       )}
