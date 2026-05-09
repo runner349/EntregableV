@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { supabase } from './lib/supabase'
 
 export default function Login() {
-  const [selectedRole, setSelectedRole] = useState('usuario')
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -21,10 +20,7 @@ export default function Login() {
       return
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       setErrorMsg('Correo o contraseña incorrectos')
@@ -32,58 +28,104 @@ export default function Login() {
       return
     }
 
-    // ✅ Login exitoso → Redirigir al dashboard
-    console.log('✅ Sesión iniciada:', data.user.email)
-    window.location.href = '/dashboard'  // o usa React Router
-  }
-
-  // ✅ Función para cerrar sesión (para pruebas)
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.reload()
+    window.location.href = '/dashboard'
   }
 
   return (
     <>
       <style>{styles}</style>
 
-      <div className="login-page">
-        <div className="login-left">
-          <div className="circle circle-one"></div>
-          <div className="circle circle-two"></div>
+      <div style={{
+        width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: '#000', fontFamily: "'Inter', 'DM Sans', sans-serif", overflow: 'hidden', position: 'relative'
+      }}>
+        {/* Fondo decorativo sutil */}
+        <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(34,197,94,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '-15%', left: '-5%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(34,197,94,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-          <div className="login-content">
-            <h1>Bienvenido</h1>
-            <p>Ingresa para continuar en Nova Salud</p>
-
-            <form onSubmit={handleLogin}>
-              <input type="email" name="email" placeholder="Correo" />
-              <input type="password" name="password" placeholder="Contraseña" />
-
-              {errorMsg && <div className="login-error">{errorMsg}</div>}
-
-              <button className="login-btn" type="submit" disabled={loading}>
-                {loading ? 'Ingresando...' : 'Login'}
-              </button>
-            </form>
-
-            <button onClick={handleLogout} style={{ marginTop: 10, background: 'red', color: 'white', padding: 10, borderRadius: 8, border: 'none', cursor: 'pointer' }}>
-              Cerrar Sesión
-            </button>
+        {/* Card de login */}
+        <div style={{
+          background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 24, padding: '48px 40px',
+          maxWidth: 440, width: '90%', textAlign: 'center', position: 'relative', zIndex: 1,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.8)', animation: 'fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both'
+        }}>
+          {/* Logo */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: 18, background: 'rgba(34,197,94,0.08)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+              fontSize: 28, color: '#22C55E'
+            }}>
+              <i className="ti ti-heart-plus" />
+            </div>
+            <h1 style={{ margin: '0 0 6px', fontSize: 28, fontWeight: 800, color: '#FFF', letterSpacing: '-0.03em' }}>
+              Nova Salud
+            </h1>
+            <p style={{ margin: 0, color: '#666', fontSize: 14 }}>
+              Sistema de gestión farmacéutica
+            </p>
           </div>
-        </div>
 
-        <div className="login-right">
-          <div className="right-circle"></div>
+          {/* Formulario */}
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <input
+              type="email"
+              name="email"
+              placeholder="Correo electrónico"
+              style={{
+                width: '100%', background: '#050505', border: '1px solid #1A1A1A', borderRadius: 14,
+                padding: '14px 18px', color: '#FFF', fontSize: 15, fontFamily: "'Inter', sans-serif",
+                outline: 'none', transition: 'border-color 0.2s'
+              }}
+              onFocus={e => e.target.style.borderColor = '#22C55E'}
+              onBlur={e => e.target.style.borderColor = '#1A1A1A'}
+            />
 
-          <div className="right-content">
-            <h2>¿Nuevo aquí?</h2>
-            <p>Crea una cuenta desde Supabase Auth para acceder al sistema.</p>
+            <input
+              type="password"
+              name="password"
+              placeholder="Contraseña"
+              style={{
+                width: '100%', background: '#050505', border: '1px solid #1A1A1A', borderRadius: 14,
+                padding: '14px 18px', color: '#FFF', fontSize: 15, fontFamily: "'Inter', sans-serif",
+                outline: 'none', transition: 'border-color 0.2s'
+              }}
+              onFocus={e => e.target.style.borderColor = '#22C55E'}
+              onBlur={e => e.target.style.borderColor = '#1A1A1A'}
+            />
 
-            <button className="signup-btn" type="button">
-              Sign Up
+            {errorMsg && (
+              <div style={{
+                background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                padding: '10px 14px', borderRadius: 10, color: '#EF4444', fontSize: 13, fontWeight: 600
+              }}>
+                {errorMsg}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%', border: 'none', borderRadius: 14, padding: '15px',
+                background: loading ? '#1A1A1A' : '#22C55E',
+                color: loading ? '#666' : '#000', fontSize: 16, fontWeight: 700,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontFamily: "'Inter', sans-serif",
+                transition: 'all 0.2s ease',
+                boxShadow: loading ? 'none' : '0 8px 24px rgba(34,197,94,0.25)'
+              }}
+              onMouseEnter={e => { if (!loading) e.target.style.background = '#4ADE80' }}
+              onMouseLeave={e => { if (!loading) e.target.style.background = '#22C55E' }}
+            >
+              {loading ? 'Ingresando...' : 'Iniciar sesión'}
             </button>
-          </div>
+          </form>
+
+          {/* Footer */}
+          <p style={{ margin: '24px 0 0', color: '#444', fontSize: 12 }}>
+            Botica Nova Salud &copy; {new Date().getFullYear()}
+          </p>
         </div>
       </div>
     </>
@@ -91,210 +133,10 @@ export default function Login() {
 }
 
 const styles = `
-* {
-  box-sizing: border-box;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-html, body, #root {
-  margin: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.login-page {
-  width: 100vw;
-  height: 100vh;
-  display: grid;
-  grid-template-columns: 1fr 1.15fr;
-  overflow: hidden;
-  background: white;
-}
-
-.login-left {
-  position: relative;
-  background: linear-gradient(135deg, #4f8ee8, #235ebd);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.login-left::after {
-  content: "";
-  position: absolute;
-  right: -150px;
-  top: -5%;
-  width: 340px;
-  height: 110%;
-  background: white;
-  border-radius: 50%;
-  z-index: 1;
-}
-
-.login-content {
-  width: 100%;
-  max-width: 520px;
-  color: white;
-  text-align: center;
-  position: relative;
-  z-index: 3;
-  padding: 30px;
-}
-
-.login-content h1 {
-  font-size: 54px;
-  margin: 0 0 18px;
-}
-
-.login-content p {
-  font-size: 22px;
-  margin-bottom: 42px;
-}
-
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-input {
-  width: 100%;
-  border: none;
-  border-radius: 18px;
-  padding: 25px 28px;
-  font-size: 24px;
-  outline: none;
-}
-
-.login-error {
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255,255,255,0.35);
-  padding: 12px;
-  border-radius: 14px;
-  font-weight: bold;
-  color: #fff;
-}
-
-.login-btn {
-  border: none;
-  border-radius: 18px;
-  padding: 25px;
-  background: #ff9026;
-  color: white;
-  font-size: 24px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.login-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.login-btn:hover {
-  background: #f97316;
-}
-
-.login-right {
-  position: relative;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.right-content {
-  text-align: center;
-  max-width: 520px;
-  padding: 30px;
-}
-
-.right-content h2 {
-  font-size: 44px;
-  margin: 0 0 28px;
-  color: #111;
-}
-
-.right-content p {
-  font-size: 25px;
-  line-height: 1.5;
-  color: #333;
-  margin-bottom: 45px;
-}
-
-.signup-btn {
-  width: 360px;
-  padding: 24px;
-  border: none;
-  border-radius: 16px;
-  background: #2f65c7;
-  color: white;
-  font-size: 24px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.signup-btn:hover {
-  background: #2555aa;
-}
-
-.circle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.12);
-}
-
-.circle-one {
-  width: 470px;
-  height: 470px;
-  left: -160px;
-  bottom: -170px;
-}
-
-.circle-two {
-  width: 320px;
-  height: 320px;
-  right: -40px;
-  top: -95px;
-}
-
-.right-circle {
-  position: absolute;
-  width: 360px;
-  height: 360px;
-  right: -100px;
-  bottom: -120px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #5397e9, #2566c8);
-}
-
-@media (max-width: 900px) {
-  .login-page {
-    grid-template-columns: 1fr;
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { width: 100%; height: 100%; background: #000; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
   }
-
-  .login-left::after {
-    display: none;
-  }
-
-  .login-right {
-    display: none;
-  }
-
-  .login-content h1 {
-    font-size: 38px;
-  }
-
-  .login-content p {
-    font-size: 16px;
-  }
-
-  input,
-  .login-btn {
-    font-size: 16px;
-    padding: 15px;
-  }
-}
 `

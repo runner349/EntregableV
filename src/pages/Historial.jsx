@@ -3,6 +3,17 @@ import { supabase } from '../lib/supabase'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
+// ============================================
+// SKELETON
+// ============================================
+const Skeleton = ({ width, height, radius = 12 }) => (
+  <div style={{
+    width: width || '100%', height: height || 20, borderRadius: radius,
+    background: 'linear-gradient(90deg, #0A0A0A 25%, #111 50%, #0A0A0A 75%)',
+    backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite',
+  }} />
+)
+
 export default function Historial() {
   const [ventas, setVentas] = useState([])
   const [todasLasVentas, setTodasLasVentas] = useState([])
@@ -12,61 +23,40 @@ export default function Historial() {
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const [detalleVenta, setDetalleVenta] = useState(null)
+  const [confirmAnular, setConfirmAnular] = useState(null)
+  const [notificacion, setNotificacion] = useState(null)
 
-  useEffect(() => {
-    cargarTodasLasVentas()
-  }, [])
+  useEffect(() => { cargarTodasLasVentas() }, [])
 
   const cargarTodasLasVentas = async () => {
     setLoading(true)
-
     const { data } = await supabase
       .from('Ventas')
       .select('*, Clientes(*), Usuarios(*), Tipos_Comprobantes(*)')
       .order('fecha_hora', { ascending: false })
       .limit(200)
-
     setTodasLasVentas(data || [])
     setVentas(data || [])
     setLoading(false)
   }
 
-  useEffect(() => {
-    filtrarVentas()
-  }, [busqueda, filtroTipo, fechaDesde, fechaHasta, todasLasVentas])
+  useEffect(() => { filtrarVentas() }, [busqueda, filtroTipo, fechaDesde, fechaHasta, todasLasVentas])
 
   const filtrarVentas = () => {
     let resultado = [...todasLasVentas]
-
     if (busqueda.trim()) {
       const termino = busqueda.trim().toLowerCase()
       resultado = resultado.filter(v => {
         const comprobante = `${v.serie_documento}-${v.numero_documento}`.toLowerCase()
         const cliente = v.Clientes?.nombres_razon_social?.toLowerCase() || ''
-        const numeroDoc = v.numero_documento?.toLowerCase() || ''
-        const serie = v.serie_documento?.toLowerCase() || ''
-
-        return comprobante.includes(termino) ||
-               cliente.includes(termino) ||
-               numeroDoc.includes(termino) ||
-               serie.includes(termino)
+        return comprobante.includes(termino) || cliente.includes(termino)
       })
     }
-
     if (filtroTipo !== 'Todos') {
-      resultado = resultado.filter(v =>
-        v.Tipos_Comprobantes?.nombre_documento === filtroTipo
-      )
+      resultado = resultado.filter(v => v.Tipos_Comprobantes?.nombre_documento === filtroTipo)
     }
-
-    if (fechaDesde) {
-      resultado = resultado.filter(v => v.fecha_hora >= fechaDesde)
-    }
-
-    if (fechaHasta) {
-      resultado = resultado.filter(v => v.fecha_hora <= fechaHasta + 'T23:59:59')
-    }
-
+    if (fechaDesde) resultado = resultado.filter(v => v.fecha_hora >= fechaDesde)
+    if (fechaHasta) resultado = resultado.filter(v => v.fecha_hora <= fechaHasta + 'T23:59:59')
     setVentas(resultado)
   }
 
@@ -75,47 +65,32 @@ export default function Historial() {
       .from('Detalle_Ventas')
       .select('*, Productos(*)')
       .eq('id_venta', idVenta)
-
     setDetalleVenta({ id: idVenta, items: data || [] })
   }
 
-  const anularVenta = async (idVenta) => {
-    if (!confirm('¿Anular esta venta? Se devolverá el stock automáticamente.')) return
+  const handleAnular = (idVenta) => {
+    setConfirmAnular(idVenta)
+  }
 
-    const { error } = await supabase
-      .from('Ventas')
-      .update({ estado: 'Anulada' })
-      .eq('id_venta', idVenta)
-
+  const confirmarAnulacion = async () => {
+    if (!confirmAnular) return
+    const { error } = await supabase.from('Ventas').update({ estado: 'Anulada' }).eq('id_venta', confirmAnular)
     if (error) {
-      alert('Error: ' + error.message)
-      return
+      setNotificacion({ tipo: 'error', mensaje: '❌ Error: ' + error.message })
+    } else {
+      setNotificacion({ tipo: 'success', mensaje: '✅ Venta anulada correctamente. Stock devuelto.' })
     }
-
-    alert('✅ Venta anulada. Stock devuelto automáticamente.')
+    setConfirmAnular(null)
     cargarTodasLasVentas()
   }
 
-  // 📥 EXPORTAR A CSV
+  // 📥 EXPORTAR CSV
   const exportarCSV = () => {
-    if (ventas.length === 0) {
-      alert('No hay datos para exportar')
-      return
-    }
-
+    if (!ventas.length) return
     let csv = 'Comprobante,Tipo,Fecha,Cliente,Total,Estado\n'
-
     ventas.forEach(v => {
-      const comprobante = `${v.serie_documento}-${v.numero_documento}`
-      const tipo = v.Tipos_Comprobantes?.nombre_documento || ''
-      const fecha = new Date(v.fecha_hora).toLocaleString()
-      const cliente = v.Clientes?.nombres_razon_social || 'Público'
-      const total = v.total?.toFixed(2) || '0.00'
-      const estado = v.estado
-
-      csv += `"${comprobante}","${tipo}","${fecha}","${cliente}","S/ ${total}","${estado}"\n`
+      csv += `"${v.serie_documento}-${v.numero_documento}","${v.Tipos_Comprobantes?.nombre_documento || ''}","${new Date(v.fecha_hora).toLocaleString()}","${v.Clientes?.nombres_razon_social || 'Público'}","S/ ${v.total?.toFixed(2)}","${v.estado}"\n`
     })
-
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -125,218 +100,247 @@ export default function Historial() {
     URL.revokeObjectURL(url)
   }
 
-  // 📄 EXPORTAR A PDF
+  // 📄 EXPORTAR PDF
   const exportarPDF = () => {
-    if (ventas.length === 0) {
-      alert('No hay datos para exportar')
-      return
-    }
-
+    if (!ventas.length) return
     const doc = new jsPDF()
-
-    // Título
     doc.setFontSize(16)
     doc.text('Nova Salud - Historial de Ventas', 14, 20)
     doc.setFontSize(10)
     doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 28)
 
-    // Datos de la tabla
     const tabla = ventas.map(v => [
       `${v.serie_documento}-${v.numero_documento}`,
       v.Tipos_Comprobantes?.nombre_documento || '',
       new Date(v.fecha_hora).toLocaleString(),
       v.Clientes?.nombres_razon_social || 'Público',
-      `S/ ${v.total?.toFixed(2) || '0.00'}`,
+      `S/ ${v.total?.toFixed(2)}`,
       v.estado
     ])
 
-    // Usar autoTable como plugin independiente
     autoTable(doc, {
       head: [['Comprobante', 'Tipo', 'Fecha', 'Cliente', 'Total', 'Estado']],
       body: tabla,
       startY: 35,
-      styles: { fontSize: 8, cellPadding: 3 },
-      headStyles: { fillColor: [35, 94, 189], textColor: 255 },
-      alternateRowStyles: { fillColor: [240, 244, 255] }
+      styles: { fontSize: 8, cellPadding: 3, textColor: [255, 255, 255], fillColor: [10, 10, 10] },
+      headStyles: { fillColor: [34, 197, 94], textColor: [0, 0, 0], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [15, 15, 15] },
+      theme: 'grid',
     })
 
     doc.save(`historial_ventas_${new Date().toISOString().split('T')[0]}.pdf`)
   }
 
-  if (loading) return <div style={{ padding: 30 }}>Cargando historial...</div>
+  const inputStyle = { background: '#050505', border: '1px solid #1A1A1A', borderRadius: 12, padding: '9px 14px', color: '#FFF', fontSize: 12, fontFamily: "'Inter', sans-serif", outline: 'none' }
+  const selectStyle = { ...inputStyle, cursor: 'pointer' }
+
+  if (loading) {
+    return (
+      <div style={{ padding: 28, background: '#000', minHeight: '100vh' }}>
+        <div style={{ marginBottom: 28 }}><Skeleton width={200} height={36} /><div style={{ marginTop: 8 }}><Skeleton width={280} height={18} /></div></div>
+        <div style={{ background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 20, padding: 24 }}><Skeleton width="100%" height={300} /></div>
+      </div>
+    )
+  }
 
   return (
-    <div>
-      <div className="card">
-        <div className="card-title" style={{ marginBottom: 16 }}>
-          <span>Historial de ventas</span>
-          <i className="ti ti-receipt" />
+    <div style={{ padding: '8px 0', background: '#000', color: '#FFF', fontFamily: "'Inter', 'DM Sans', sans-serif" }}>
+      {/* HEADER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 14 }}>
+        <div className="fade-in">
+          <h1 style={{ margin: '0 0 4px', fontSize: 30, fontWeight: 800, color: '#FFF', letterSpacing: '-0.03em' }}>Historial de ventas</h1>
+          <p style={{ margin: 0, color: '#666', fontSize: 13 }}>{ventas.length} movimientos registrados</p>
         </div>
-
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <input
-            className="form-control"
-            style={{ maxWidth: 260 }}
-            placeholder="Buscar por N° o cliente..."
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-          />
-
-          <select
-            className="form-control"
-            style={{ maxWidth: 150 }}
-            value={filtroTipo}
-            onChange={e => setFiltroTipo(e.target.value)}
-          >
-            <option>Todos</option>
-            <option>Boleta</option>
-            <option>Factura</option>
-          </select>
-
-          <input
-            type="date"
-            className="form-control"
-            style={{ maxWidth: 160 }}
-            value={fechaDesde}
-            onChange={e => setFechaDesde(e.target.value)}
-            placeholder="Desde"
-          />
-
-          <input
-            type="date"
-            className="form-control"
-            style={{ maxWidth: 160 }}
-            value={fechaHasta}
-            onChange={e => setFechaHasta(e.target.value)}
-            placeholder="Hasta"
-          />
-
-          <div style={{ flex: 1 }} />
-
-          <button className="btn" onClick={exportarCSV} title="Exportar a CSV">
-            <i className="ti ti-file-spreadsheet" /> CSV
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn" onClick={exportarCSV} disabled={!ventas.length}>
+            <i className="ti ti-file-spreadsheet" style={{ fontSize: 14 }} /> CSV
           </button>
-          <button className="btn" onClick={exportarPDF} title="Exportar a PDF">
-            <i className="ti ti-file-pdf" /> PDF
-          </button>
-          <button className="btn" onClick={cargarTodasLasVentas} title="Actualizar">
-            <i className="ti ti-refresh" />
+          <button className="btn" onClick={exportarPDF} disabled={!ventas.length}>
+            <i className="ti ti-file-pdf" style={{ fontSize: 14 }} /> PDF
           </button>
         </div>
-
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Comprobante</th>
-              <th>Tipo</th>
-              <th>Fecha</th>
-              <th>Cliente</th>
-              <th>Total</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ventas.length === 0 ? (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: 20 }}>
-                No se encontraron ventas
-              </td></tr>
-            ) : ventas.map(v => (
-              <tr key={v.id_venta}>
-                <td style={{ fontWeight: 600 }}>
-                  {v.serie_documento}-{v.numero_documento}
-                </td>
-                <td>
-                  <span className={v.Tipos_Comprobantes?.nombre_documento === 'Boleta' ? 'tag-boleta' : 'tag-factura'}>
-                    {v.Tipos_Comprobantes?.nombre_documento}
-                  </span>
-                </td>
-                <td style={{ color: 'var(--gray-500)', fontSize: 12 }}>
-                  {new Date(v.fecha_hora).toLocaleString()}
-                </td>
-                <td>{v.Clientes?.nombres_razon_social || 'Público'}</td>
-                <td style={{ fontWeight: 600 }}>S/ {v.total?.toFixed(2)}</td>
-                <td>
-                  <span className={`badge ${v.estado === 'Completada' ? 'badge-success' : 'badge-danger'}`}>
-                    {v.estado}
-                  </span>
-                </td>
-                <td>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button className="icon-btn" title="Ver detalle" onClick={() => verDetalle(v.id_venta)}>
-                      <i className="ti ti-eye" />
-                    </button>
-                    {v.estado === 'Completada' && (
-                      <button className="icon-btn danger" title="Anular venta" onClick={() => anularVenta(v.id_venta)}>
-                        <i className="ti ti-x" />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
 
-      {/* Modal de detalle */}
+      {/* FILTROS */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <input placeholder="Buscar por N° o cliente..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={{ ...inputStyle, maxWidth: 240 }} />
+        <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ ...selectStyle, maxWidth: 130 }}>
+          <option value="Todos">Todos</option>
+          <option value="Boleta">Boleta</option>
+          <option value="Factura">Factura</option>
+        </select>
+        <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} style={{ ...inputStyle, maxWidth: 150 }} />
+        <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} style={{ ...inputStyle, maxWidth: 150 }} />
+        <div style={{ flex: 1 }} />
+        <button className="btn" onClick={cargarTodasLasVentas}>
+          <i className="ti ti-refresh" style={{ fontSize: 14 }} />
+        </button>
+      </div>
+
+      {/* TABLA */}
+      <div style={{ background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 20, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                {['Comprobante', 'Tipo', 'Fecha', 'Cliente', 'Total', 'Estado', 'Acciones'].map(h => <th key={h} style={{ padding: '12px 16px' }}>{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {ventas.length === 0 ? (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: 50 }}>
+                  <i className="ti ti-receipt-off" style={{ fontSize: 40, color: '#1A1A1A', display: 'block', marginBottom: 12 }} />
+                  <strong style={{ color: '#FFF' }}>No se encontraron ventas</strong>
+                </td></tr>
+              ) : ventas.map((v, i) => (
+                <tr key={v.id_venta} style={{ animation: `fadeUp 0.4s ${0.1 + i * 0.04}s both` }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(34,197,94,0.03)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <td style={{ padding: '10px 16px' }}>
+                    <span style={{ fontWeight: 700, fontFamily: "'DM Mono', monospace", background: '#111', padding: '4px 10px', borderRadius: 6, fontSize: 12 }}>
+                      {v.serie_documento}-{v.numero_documento}
+                    </span>
+                  </td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <span className={v.Tipos_Comprobantes?.nombre_documento === 'Boleta' ? 'tag-boleta' : 'tag-factura'}>
+                      {v.Tipos_Comprobantes?.nombre_documento}
+                    </span>
+                  </td>
+                  <td style={{ padding: '10px 16px', fontSize: 11, color: '#666' }}>{new Date(v.fecha_hora).toLocaleString()}</td>
+                  <td style={{ padding: '10px 16px' }}>{v.Clientes?.nombres_razon_social || 'Público'}</td>
+                  <td style={{ padding: '10px 16px', fontWeight: 700, color: '#22C55E', fontFamily: "'DM Mono', monospace" }}>S/ {v.total?.toFixed(2)}</td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <span className={`badge ${v.estado === 'Completada' ? 'badge-success' : 'badge-danger'}`}>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: v.estado === 'Completada' ? '#22C55E' : '#EF4444' }} /> {v.estado}
+                    </span>
+                  </td>
+                  <td style={{ padding: '10px 16px' }}>
+                    <div style={{ display: 'flex', gap: 5 }}>
+                      <button className="icon-btn" title="Ver detalle" onClick={() => verDetalle(v.id_venta)}><i className="ti ti-eye" style={{ fontSize: 15 }} /></button>
+                      {v.estado === 'Completada' && (
+                        <button className="icon-btn danger" title="Anular venta" onClick={() => handleAnular(v.id_venta)}><i className="ti ti-x" style={{ fontSize: 15 }} /></button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* MODAL DETALLE */}
       {detalleVenta && (
-        <div 
-          onClick={() => setDetalleVenta(null)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 99999
-          }}
-        >
-          <div 
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: 'white',
-              borderRadius: 12,
-              padding: 24,
-              maxWidth: 600,
-              width: '90%',
-              maxHeight: '80vh',
-              overflowY: 'auto',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-            }}
-          >
-            <h3 style={{ marginTop: 0 }}>Detalle de venta</h3>
+        <div className="modal-overlay" onClick={() => setDetalleVenta(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 550 }}>
+            <h3 style={{ margin: '0 0 18px', fontSize: 18, fontWeight: 700, color: '#FFF' }}>Detalle de venta</h3>
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Producto</th>
-                  <th>Cantidad</th>
-                  <th>Precio Unit.</th>
-                  <th>Subtotal</th>
+                  {['Producto', 'Cantidad', 'Precio Unit.', 'Subtotal'].map(h => <th key={h} style={{ padding: '10px 14px' }}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {detalleVenta.items.length === 0 ? (
-                  <tr><td colSpan={4} style={{ textAlign: 'center', padding: 20 }}>No hay productos</td></tr>
-                ) : (
-                  detalleVenta.items.map((item, i) => (
-                    <tr key={i}>
-                      <td>{item.Productos?.nombre_comercial || 'Producto #' + item.id_producto}</td>
-                      <td>{item.cantidad}</td>
-                      <td>S/ {item.precio_unitario?.toFixed(2)}</td>
-                      <td><strong>S/ {item.subtotal?.toFixed(2)}</strong></td>
-                    </tr>
-                  ))
-                )}
+                  <tr><td colSpan={4} style={{ textAlign: 'center', padding: 30, color: '#666' }}>No hay productos</td></tr>
+                ) : detalleVenta.items.map((item, i) => (
+                  <tr key={i}>
+                    <td style={{ padding: '10px 14px' }}>{item.Productos?.nombre_comercial || 'Producto #' + item.id_producto}</td>
+                    <td style={{ padding: '10px 14px' }}>{item.cantidad}</td>
+                    <td style={{ padding: '10px 14px', color: '#22C55E', fontFamily: "'DM Mono', monospace" }}>S/ {item.precio_unitario?.toFixed(2)}</td>
+                    <td style={{ padding: '10px 14px', fontWeight: 700, color: '#22C55E', fontFamily: "'DM Mono', monospace" }}>S/ {item.subtotal?.toFixed(2)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
             <div style={{ textAlign: 'right', marginTop: 16 }}>
-              <button className="btn" onClick={() => setDetalleVenta(null)}>Cerrar</button>
+              <button className="btn btn-secondary" onClick={() => setDetalleVenta(null)}>Cerrar</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMACIÓN ANULAR */}
+      {confirmAnular && (
+        <div className="modal-overlay" onClick={() => setConfirmAnular(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, textAlign: 'center' }}>
+            {/* Icono de advertencia */}
+            <div style={{
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              background: 'rgba(239, 68, 68, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+              fontSize: 30
+            }}>
+              ⚠️
+            </div>
+
+            <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: '#FFF' }}>
+              ¿Anular esta venta?
+            </h3>
+            <p style={{ margin: '0 0 6px', color: '#666', fontSize: 14 }}>
+              Esta acción no se puede deshacer.
+            </p>
+            <p style={{ margin: '0 0 20px', color: '#22C55E', fontSize: 13, fontWeight: 600 }}>
+              ✅ El stock se devolverá automáticamente al inventario.
+            </p>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setConfirmAnular(null)}
+                style={{ padding: '10px 24px', fontSize: 14 }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarAnulacion}
+                style={{
+                  padding: '10px 24px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  background: '#EF4444',
+                  color: '#FFF',
+                  border: 'none',
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 6px 20px rgba(239, 68, 68, 0.25)',
+                }}
+                onMouseEnter={e => e.target.style.background = '#DC2626'}
+                onMouseLeave={e => e.target.style.background = '#EF4444'}
+              >
+                Sí, anular venta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOTIFICACIÓN */}
+      {notificacion && (
+        <div className="modal-overlay" onClick={() => setNotificacion(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 380, textAlign: 'center' }}>
+            <div style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: notificacion.tipo === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 14px',
+              fontSize: 24
+            }}>
+              {notificacion.tipo === 'success' ? '✅' : '❌'}
+            </div>
+            <p style={{ color: '#FFF', fontSize: 15, margin: '0 0 18px' }}>{notificacion.mensaje}</p>
+            <button className="btn btn-primary" onClick={() => setNotificacion(null)}>Continuar</button>
           </div>
         </div>
       )}

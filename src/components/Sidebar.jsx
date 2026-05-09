@@ -2,20 +2,19 @@ import { supabase } from '../lib/supabase'
 
 export default function Sidebar({ currentPage, onNavigate, profile }) {
   const navItems = [
-    { section: 'General' },
+    { section: 'Principal' },
     { id: 'dashboard', label: 'Dashboard', icon: 'ti-layout-dashboard' },
     { id: 'nueva-venta', label: 'Nueva venta', icon: 'ti-shopping-cart' },
     { id: 'historial', label: 'Historial', icon: 'ti-receipt' },
+    { section: 'Gestión' },
     { id: 'productos', label: 'Productos', icon: 'ti-pill' },
     { id: 'clientes', label: 'Clientes', icon: 'ti-users' },
     { id: 'empleados', label: 'Empleados', icon: 'ti-id-badge' },
   ]
 
-  // Datos reales desde la tabla Usuarios
   const email = profile?.username || 'Usuario'
   const rolNombre = getRolNombre(profile?.id_rol)
 
-  // Iniciales desde el email
   const initials = email
     .split('@')[0]
     .split('.')
@@ -31,6 +30,7 @@ export default function Sidebar({ currentPage, onNavigate, profile }) {
 
   return (
     <aside className="sidebar">
+      {/* Logo */}
       <div className="sidebar-logo">
         <div className="brand">
           <i className="ti ti-heart-plus" />
@@ -39,6 +39,7 @@ export default function Sidebar({ currentPage, onNavigate, profile }) {
         <div className="sub">Sistema de ventas</div>
       </div>
 
+      {/* Navegación */}
       <nav className="sidebar-nav">
         {navItems.map((item, idx) =>
           item.section ? (
@@ -56,10 +57,10 @@ export default function Sidebar({ currentPage, onNavigate, profile }) {
         )}
       </nav>
 
+      {/* Footer con usuario */}
       <div className="sidebar-footer">
         <div className="user-pill">
           <div className="user-avatar">{initials}</div>
-
           <div className="user-info">
             <div className="name">{email}</div>
             <div className="role">{rolNombre}</div>
@@ -75,7 +76,6 @@ export default function Sidebar({ currentPage, onNavigate, profile }) {
   )
 }
 
-// Función auxiliar para mostrar el nombre del rol
 function getRolNombre(idRol) {
   switch (idRol) {
     case 1: return 'Administrador'

@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-function stockBadge(stock) {
-  if (stock <= 5) return <span className="badge badge-danger">{stock} u.</span>
-  if (stock <= 20) return <span className="badge badge-warning">{stock} u.</span>
-  return <span className="badge badge-success">{stock} u.</span>
-}
+// ============================================
+// SKELETON
+// ============================================
+const Skeleton = ({ width, height, radius = 12 }) => (
+  <div style={{
+    width: width || '100%', height: height || 20, borderRadius: radius,
+    background: 'linear-gradient(90deg, #0A0A0A 25%, #111 50%, #0A0A0A 75%)',
+    backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite',
+  }} />
+)
 
+// ============================================
+// COMPONENTE PRINCIPAL
+// ============================================
 export default function Productos() {
   const [productos, setProductos] = useState([])
   const [categorias, setCategorias] = useState([])
@@ -24,603 +32,324 @@ export default function Productos() {
   const [uploading, setUploading] = useState(false)
   const [notificacion, setNotificacion] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [productoSeleccionado, setProductoSeleccionado] = useState(null)
 
   const [form, setForm] = useState({
-    nombre_comercial: '',
-    principio_activo: '',
-    id_laboratorio: '',
-    id_categoria: '',
-    id_presentacion: '',
-    stock_actual_unidades: 0,
-    stock_minimo_unidades: 20,
-    fecha_vencimiento: '',
-    precio_venta: '',
-    id_unidad: '',
-    id_moneda: '1',
-    imagen_url: ''
+    nombre_comercial: '', principio_activo: '', id_laboratorio: '', id_categoria: '',
+    id_presentacion: '', stock_actual_unidades: 0, stock_minimo_unidades: 20,
+    fecha_vencimiento: '', precio_venta: '', id_unidad: '', id_moneda: '1', imagen_url: ''
   })
 
-  useEffect(() => {
-    cargarDatos()
-  }, [])
+  useEffect(() => { cargarDatos() }, [])
 
   const cargarDatos = async () => {
     setLoading(true)
-
-    const { data: prod } = await supabase
-      .from('Productos')
-      .select('*, Laboratorios(*), Categorias(*), Presentaciones(*), Productos_Precios(*, Unidades_Medida(*), Monedas(*))')
-      .eq('estado', true)
-      .order('nombre_comercial')
-
-    setProductos(prod || [])
-
-    const { data: cat } = await supabase.from('Categorias').select('*')
-    setCategorias(cat || [])
-
-    const { data: lab } = await supabase.from('Laboratorios').select('*').eq('estado', true)
-    setLaboratorios(lab || [])
-
-    const { data: pres } = await supabase.from('Presentaciones').select('*')
-    setPresentaciones(pres || [])
-
-    const { data: uni } = await supabase.from('Unidades_Medida').select('*')
-    setUnidades(uni || [])
-
-    const { data: mon } = await supabase.from('Monedas').select('*')
-    setMonedas(mon || [])
-
-    setLoading(false)
+    try {
+      const [{ data: prod }, { data: cat }, { data: lab }, { data: pres }, { data: uni }, { data: mon }] = await Promise.all([
+        supabase.from('Productos').select('*, Laboratorios(*), Categorias(*), Presentaciones(*), Productos_Precios(*, Unidades_Medida(*), Monedas(*))').eq('estado', true).order('nombre_comercial'),
+        supabase.from('Categorias').select('*'),
+        supabase.from('Laboratorios').select('*').eq('estado', true),
+        supabase.from('Presentaciones').select('*'),
+        supabase.from('Unidades_Medida').select('*'),
+        supabase.from('Monedas').select('*'),
+      ])
+      setProductos(prod || []); setCategorias(cat || []); setLaboratorios(lab || [])
+      setPresentaciones(pres || []); setUnidades(uni || []); setMonedas(mon || [])
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
   }
 
   const subirImagen = async (file) => {
     if (!file) return null
-
     setUploading(true)
     const fileName = `producto_${Date.now()}_${file.name.replace(/\s/g, '_')}`
-    
-    const { data, error } = await supabase.storage
-      .from('productos')
-      .upload(fileName, file)
-
+    const { error } = await supabase.storage.from('productos').upload(fileName, file)
     setUploading(false)
-
-    if (error) {
-      setNotificacion({ tipo: 'error', mensaje: 'Error al subir imagen: ' + error.message })
-      return null
-    }
-
-    const { data: urlData } = supabase.storage
-      .from('productos')
-      .getPublicUrl(fileName)
-
+    if (error) { setNotificacion({ tipo: 'error', mensaje: 'Error al subir imagen' }); return null }
+    const { data: urlData } = supabase.storage.from('productos').getPublicUrl(fileName)
     return urlData.publicUrl
-  }
-
-  const handleImagenChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setImagenFile(file)
-      setImagenPreview(URL.createObjectURL(file))
-    }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     if (!form.nombre_comercial || !form.id_laboratorio || !form.id_categoria || !form.id_presentacion) {
-      setNotificacion({ tipo: 'error', mensaje: 'Completa los campos obligatorios' })
-      return
+      setNotificacion({ tipo: 'error', mensaje: 'Completa los campos obligatorios' }); return
     }
-
     try {
       let imagenUrl = form.imagen_url
-      if (imagenFile) {
-        const url = await subirImagen(imagenFile)
-        if (url) imagenUrl = url
-      }
-
+      if (imagenFile) { const url = await subirImagen(imagenFile); if (url) imagenUrl = url }
       if (editando) {
-        const { error } = await supabase
-          .from('Productos')
-          .update({
-            nombre_comercial: form.nombre_comercial,
-            principio_activo: form.principio_activo,
-            id_laboratorio: form.id_laboratorio,
-            id_categoria: form.id_categoria,
-            id_presentacion: form.id_presentacion,
-            stock_actual_unidades: form.stock_actual_unidades,
-            stock_minimo_unidades: form.stock_minimo_unidades,
-            fecha_vencimiento: form.fecha_vencimiento || null,
-            imagen_url: imagenUrl
-          })
-          .eq('id_producto', editando)
-
-        if (error) throw error
-
-        if (form.precio_venta && form.id_unidad) {
-          const { data: precioExistente } = await supabase
-            .from('Productos_Precios')
-            .select('id_producto_precio')
-            .eq('id_producto', editando)
-            .maybeSingle()
-
-          if (precioExistente) {
-            await supabase
-              .from('Productos_Precios')
-              .update({
-                precio_venta: form.precio_venta,
-                id_unidad: form.id_unidad,
-                id_moneda: form.id_moneda
-              })
-              .eq('id_producto_precio', precioExistente.id_producto_precio)
-          } else {
-            await supabase
-              .from('Productos_Precios')
-              .insert({
-                id_producto: editando,
-                id_unidad: form.id_unidad,
-                cantidad_equivalente: 1,
-                precio_venta: form.precio_venta,
-                id_moneda: form.id_moneda
-              })
-          }
-        }
-
-        setNotificacion({ tipo: 'success', mensaje: '✅ Producto actualizado correctamente' })
+        await supabase.from('Productos').update({ ...form, imagen_url: imagenUrl }).eq('id_producto', editando)
+        setNotificacion({ tipo: 'success', mensaje: '✅ Producto actualizado' })
       } else {
-        const { data: producto, error } = await supabase
-          .from('Productos')
-          .insert({
-            nombre_comercial: form.nombre_comercial,
-            principio_activo: form.principio_activo,
-            id_laboratorio: form.id_laboratorio,
-            id_categoria: form.id_categoria,
-            id_presentacion: form.id_presentacion,
-            stock_actual_unidades: form.stock_actual_unidades,
-            stock_minimo_unidades: form.stock_minimo_unidades,
-            fecha_vencimiento: form.fecha_vencimiento || null,
-            imagen_url: imagenUrl
-          })
-          .select('id_producto')
-          .single()
-
-        if (error) throw error
-
+        const { data: prod } = await supabase.from('Productos').insert({ ...form, imagen_url: imagenUrl }).select('id_producto').single()
         if (form.precio_venta && form.id_unidad) {
-          await supabase
-            .from('Productos_Precios')
-            .insert({
-              id_producto: producto.id_producto,
-              id_unidad: form.id_unidad,
-              cantidad_equivalente: 1,
-              precio_venta: form.precio_venta,
-              id_moneda: form.id_moneda
-            })
+          await supabase.from('Productos_Precios').insert({ id_producto: prod.id_producto, id_unidad: form.id_unidad, cantidad_equivalente: 1, precio_venta: form.precio_venta, id_moneda: form.id_moneda })
         }
-
-        setNotificacion({ tipo: 'success', mensaje: '✅ Producto creado correctamente' })
+        setNotificacion({ tipo: 'success', mensaje: '✅ Producto creado' })
       }
-
-      setMostrarForm(false)
-      setEditando(null)
-      setImagenFile(null)
-      setImagenPreview(null)
-      setForm({
-        nombre_comercial: '',
-        principio_activo: '',
-        id_laboratorio: '',
-        id_categoria: '',
-        id_presentacion: '',
-        stock_actual_unidades: 0,
-        stock_minimo_unidades: 20,
-        fecha_vencimiento: '',
-        precio_venta: '',
-        id_unidad: '',
-        id_moneda: '1',
-        imagen_url: ''
-      })
+      setMostrarForm(false); setEditando(null); setImagenFile(null); setImagenPreview(null)
+      setForm({ nombre_comercial: '', principio_activo: '', id_laboratorio: '', id_categoria: '', id_presentacion: '', stock_actual_unidades: 0, stock_minimo_unidades: 20, fecha_vencimiento: '', precio_venta: '', id_unidad: '', id_moneda: '1', imagen_url: '' })
       cargarDatos()
-    } catch (error) {
-      setNotificacion({ tipo: 'error', mensaje: '❌ Error: ' + error.message })
-    }
+    } catch (e) { setNotificacion({ tipo: 'error', mensaje: '❌ Error: ' + e.message }) }
   }
 
   const handleEditar = (p) => {
     setEditando(p.id_producto)
     const precio = p.Productos_Precios?.[0]
     setForm({
-      nombre_comercial: p.nombre_comercial,
-      principio_activo: p.principio_activo || '',
-      id_laboratorio: p.id_laboratorio,
-      id_categoria: p.id_categoria,
-      id_presentacion: p.id_presentacion,
-      stock_actual_unidades: p.stock_actual_unidades,
-      stock_minimo_unidades: p.stock_minimo_unidades,
-      fecha_vencimiento: p.fecha_vencimiento || '',
-      precio_venta: precio?.precio_venta || '',
-      id_unidad: precio?.id_unidad || '',
-      id_moneda: precio?.id_moneda || '1',
-      imagen_url: p.imagen_url || ''
+      nombre_comercial: p.nombre_comercial, principio_activo: p.principio_activo || '',
+      id_laboratorio: p.id_laboratorio, id_categoria: p.id_categoria, id_presentacion: p.id_presentacion,
+      stock_actual_unidades: p.stock_actual_unidades, stock_minimo_unidades: p.stock_minimo_unidades,
+      fecha_vencimiento: p.fecha_vencimiento || '', precio_venta: precio?.precio_venta || '',
+      id_unidad: precio?.id_unidad || '', id_moneda: precio?.id_moneda || '1', imagen_url: p.imagen_url || ''
     })
-    setImagenPreview(p.imagen_url || null)
-    setImagenFile(null)
-    setMostrarForm(true)
+    setImagenPreview(p.imagen_url || null); setImagenFile(null); setProductoSeleccionado(null); setMostrarForm(true)
   }
 
-  const handleEliminar = (id) => {
-    setConfirmDelete(id)
-  }
+  const handleEliminar = (id) => setConfirmDelete(id)
 
   const confirmarEliminar = async () => {
     if (!confirmDelete) return
-
-    const { error } = await supabase
-      .from('Productos')
-      .update({ estado: false })
-      .eq('id_producto', confirmDelete)
-
-    if (error) {
-      setNotificacion({ tipo: 'error', mensaje: '❌ Error: ' + error.message })
-    } else {
-      setNotificacion({ tipo: 'success', mensaje: '🗑️ Producto eliminado correctamente' })
-    }
-    
-    setConfirmDelete(null)
-    cargarDatos()
+    await supabase.from('Productos').update({ estado: false }).eq('id_producto', confirmDelete)
+    setNotificacion({ tipo: 'success', mensaje: '🗑️ Producto eliminado' })
+    setConfirmDelete(null); setProductoSeleccionado(null); cargarDatos()
   }
 
   const categoriasUnicas = ['Todas', ...new Set(productos.map(p => p.Categorias?.nombre_categoria).filter(Boolean))]
-
   const filtrados = productos.filter(p => {
-    const matchBusq = !busqueda ||
-      p.nombre_comercial?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.Laboratorios?.nombre_laboratorio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.principio_activo?.toLowerCase().includes(busqueda.toLowerCase())
+    const matchBusq = !busqueda || p.nombre_comercial?.toLowerCase().includes(busqueda.toLowerCase()) || p.Laboratorios?.nombre_laboratorio?.toLowerCase().includes(busqueda.toLowerCase()) || p.principio_activo?.toLowerCase().includes(busqueda.toLowerCase())
     const matchCat = categoria === 'Todas' || p.Categorias?.nombre_categoria === categoria
     return matchBusq && matchCat
   })
 
-  if (loading) return <div style={{ padding: 30 }}>Cargando productos...</div>
+  const inputStyle = { width: '100%', background: '#050505', border: '1px solid #1A1A1A', borderRadius: 12, padding: '10px 14px', color: '#FFF', fontSize: 13, fontFamily: "'Inter', sans-serif", outline: 'none' }
+  const selectStyle = { ...inputStyle, cursor: 'pointer' }
+
+  if (loading) {
+    return (
+      <div style={{ padding: 28, background: '#000', minHeight: '100vh' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 28 }}>
+          <div><Skeleton width={200} height={36} /><div style={{ marginTop: 8 }}><Skeleton width={280} height={18} /></div></div>
+          <Skeleton width={150} height={42} radius={14} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
+          {[1,2,3,4,5,6].map(i => <div key={i} style={{ background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 18, padding: 16 }}><Skeleton height={180} radius={14} /><div style={{ marginTop: 12 }}><Skeleton width="70%" height={18} /><div style={{ marginTop: 6 }}><Skeleton width="50%" height={14} /></div></div></div>)}
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center' }}>
-        <input
-          className="form-control"
-          style={{ maxWidth: 260 }}
-          placeholder="Buscar medicamento..."
-          value={busqueda}
-          onChange={e => setBusqueda(e.target.value)}
-        />
-        <select
-          className="form-control"
-          style={{ maxWidth: 180 }}
-          value={categoria}
-          onChange={e => setCategoria(e.target.value)}
-        >
-          {categoriasUnicas.map(c => <option key={c}>{c}</option>)}
-        </select>
-        <div style={{ flex: 1 }} />
-        <button className="btn btn-primary" onClick={() => { setEditando(null); setImagenPreview(null); setImagenFile(null); setMostrarForm(true) }}>
-          <i className="ti ti-plus" />
-          Nuevo producto
+    <div style={{ padding: '8px 0', background: '#000', color: '#FFF', fontFamily: "'Inter', 'DM Sans', sans-serif" }}>
+      {/* HEADER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 14 }}>
+        <div className="fade-in">
+          <h1 style={{ margin: '0 0 4px', fontSize: 30, fontWeight: 800, color: '#FFF', letterSpacing: '-0.03em' }}>Catálogo de Productos</h1>
+          <p style={{ margin: 0, color: '#666', fontSize: 13 }}>{productos.length} productos en inventario</p>
+        </div>
+        <button className="btn btn-primary" onClick={() => { setEditando(null); setImagenPreview(null); setImagenFile(null); setMostrarForm(true) }} style={{ padding: '11px 22px' }}>
+          <i className="ti ti-plus" style={{ fontSize: 16 }} /> Nuevo producto
         </button>
       </div>
 
-      {/* Formulario Modal */}
+      {/* FILTROS */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
+        <input placeholder="Buscar medicamento..." value={busqueda} onChange={e => setBusqueda(e.target.value)} style={{ ...inputStyle, maxWidth: 280 }} />
+        <select value={categoria} onChange={e => setCategoria(e.target.value)} style={{ ...selectStyle, maxWidth: 180 }}>
+          {categoriasUnicas.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+
+      {/* GRID DE TARJETAS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
+        {filtrados.length === 0 ? (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 60, color: '#666' }}>
+            <i className="ti ti-pill" style={{ fontSize: 48, color: '#1A1A1A', display: 'block', marginBottom: 12 }} />
+            <strong style={{ color: '#FFF', display: 'block', fontSize: 16 }}>No se encontraron productos</strong>
+          </div>
+        ) : filtrados.map((p, i) => {
+          const precio = p.Productos_Precios?.[0]
+          return (
+            <div
+              key={p.id_producto}
+              onClick={() => setProductoSeleccionado(p)}
+              style={{
+                background: '#0A0A0A', border: '1px solid #1A1A1A', borderRadius: 18, overflow: 'hidden',
+                cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                animation: `fadeUp 0.4s ${0.05 + i * 0.04}s both`,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.4)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(0,0,0,0.8)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#1A1A1A'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              {/* Imagen */}
+              <div style={{ width: '100%', height: 180, background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                {p.imagen_url ? (
+                  <img src={p.imagen_url} alt={p.nombre_comercial} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} />
+                ) : (
+                  <div style={{ fontSize: 48, color: '#1A1A1A' }}>💊</div>
+                )}
+              </div>
+
+              {/* Info */}
+              <div style={{ padding: '14px 16px' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#22C55E', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  {p.Categorias?.nombre_categoria || 'Sin categoría'}
+                </span>
+                <h3 style={{ margin: '6px 0', fontSize: 16, fontWeight: 700, color: '#FFF', letterSpacing: '-0.02em' }}>
+                  {p.nombre_comercial}
+                </h3>
+                <p style={{ margin: 0, color: '#666', fontSize: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {p.principio_activo || p.Laboratorios?.nombre_laboratorio}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#22C55E', fontFamily: "'DM Mono', monospace" }}>
+                    {precio ? `S/ ${precio.precio_venta?.toFixed(2)}` : '—'}
+                  </span>
+                  <span className={`badge ${p.stock_actual_unidades <= 5 ? 'badge-danger' : p.stock_actual_unidades <= 20 ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: 10 }}>
+                    {p.stock_actual_unidades <= 0 ? 'Agotado' : `${p.stock_actual_unidades} u.`}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* MODAL DETALLE DEL PRODUCTO */}
+      {productoSeleccionado && (
+        <div className="modal-overlay" onClick={() => setProductoSeleccionado(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 550, padding: 0, overflow: 'hidden', maxHeight: '85vh', overflowY: 'auto' }}>
+            {(() => {
+              const p = productoSeleccionado
+              const precio = p.Productos_Precios?.[0]
+              return (
+                <div>
+                  {/* Imagen grande */}
+                  <div style={{ width: '100%', height: 180, background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    {p.imagen_url ? (
+                      <img src={p.imagen_url} alt={p.nombre_comercial} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{ fontSize: 72, color: '#1A1A1A' }}>💊</div>
+                    )}
+                  </div>
+
+                  {/* Detalles */}
+                  <div style={{ padding: '24px' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#22C55E', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      {p.Categorias?.nombre_categoria}
+                    </span>
+                    <h2 style={{ margin: '6px 0', fontSize: 22, fontWeight: 800, color: '#FFF' }}>{p.nombre_comercial}</h2>
+                    <p style={{ color: '#666', fontSize: 13, margin: '4px 0' }}>{p.principio_activo || 'Sin principio activo'}</p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 16, padding: '12px', background: '#050505', borderRadius: 12, border: '1px solid #1A1A1A' }}>
+                      <div><span style={{ color: '#666', fontSize: 11 }}>Laboratorio</span><p style={{ margin: '2px 0 0', color: '#FFF', fontWeight: 600 }}>{p.Laboratorios?.nombre_laboratorio}</p></div>
+                      <div><span style={{ color: '#666', fontSize: 11 }}>Presentación</span><p style={{ margin: '2px 0 0', color: '#FFF', fontWeight: 600 }}>{p.Presentaciones?.nombre_presentacion}</p></div>
+                      <div><span style={{ color: '#666', fontSize: 11 }}>Stock actual</span><p style={{ margin: '2px 0 0', color: '#22C55E', fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{p.stock_actual_unidades} unidades</p></div>
+                      <div><span style={{ color: '#666', fontSize: 11 }}>Stock mínimo</span><p style={{ margin: '2px 0 0', color: '#FFF', fontWeight: 600 }}>{p.stock_minimo_unidades} u.</p></div>
+                      <div><span style={{ color: '#666', fontSize: 11 }}>Vencimiento</span><p style={{ margin: '2px 0 0', color: '#FFF', fontWeight: 600 }}>{p.fecha_vencimiento ? new Date(p.fecha_vencimiento).toLocaleDateString() : '—'}</p></div>
+                      <div><span style={{ color: '#666', fontSize: 11 }}>Precio</span><p style={{ margin: '2px 0 0', color: '#22C55E', fontWeight: 700, fontFamily: "'DM Mono', monospace", fontSize: 16 }}>{precio ? `S/ ${precio.precio_venta?.toFixed(2)} / ${precio.Unidades_Medida?.nombre_unidad || 'Unidad'}` : 'Sin precio'}</p></div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 18 }}>
+                      <button className="btn btn-secondary" onClick={() => { setProductoSeleccionado(null); handleEditar(p) }}>
+                        <i className="ti ti-edit" style={{ fontSize: 15 }} /> Editar
+                      </button>
+                      <button className="btn btn-danger" onClick={() => handleEliminar(p.id_producto)}>
+                        <i className="ti ti-trash" style={{ fontSize: 15 }} /> Eliminar
+                      </button>
+                      <button className="btn btn-secondary" onClick={() => setProductoSeleccionado(null)}>Cerrar</button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL FORMULARIO (CREAR/EDITAR) */}
       {mostrarForm && (
         <div className="modal-overlay" onClick={() => setMostrarForm(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
-            <h3>{editando ? 'Editar producto' : 'Nuevo producto'}</h3>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <input className="form-control" placeholder="Nombre comercial" value={form.nombre_comercial} onChange={e => setForm({ ...form, nombre_comercial: e.target.value })} required />
-              <input className="form-control" placeholder="Principio activo" value={form.principio_activo} onChange={e => setForm({ ...form, principio_activo: e.target.value })} />
-
-              <select className="form-control" value={form.id_laboratorio} onChange={e => setForm({ ...form, id_laboratorio: e.target.value })} required>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 580 }}>
+            <h3 style={{ margin: '0 0 20px', fontSize: 20, fontWeight: 700, color: '#FFF' }}>{editando ? 'Editar producto' : 'Nuevo producto'}</h3>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <input style={inputStyle} placeholder="Nombre comercial" value={form.nombre_comercial} onChange={e => setForm({ ...form, nombre_comercial: e.target.value })} required />
+              <input style={inputStyle} placeholder="Principio activo" value={form.principio_activo} onChange={e => setForm({ ...form, principio_activo: e.target.value })} />
+              <select style={selectStyle} value={form.id_laboratorio} onChange={e => setForm({ ...form, id_laboratorio: e.target.value })} required>
                 <option value="">Seleccionar laboratorio</option>
                 {laboratorios.map(l => <option key={l.id_laboratorio} value={l.id_laboratorio}>{l.nombre_laboratorio}</option>)}
               </select>
-
-              <select className="form-control" value={form.id_categoria} onChange={e => setForm({ ...form, id_categoria: e.target.value })} required>
+              <select style={selectStyle} value={form.id_categoria} onChange={e => setForm({ ...form, id_categoria: e.target.value })} required>
                 <option value="">Seleccionar categoría</option>
                 {categorias.map(c => <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>)}
               </select>
-
-              <select className="form-control" value={form.id_presentacion} onChange={e => setForm({ ...form, id_presentacion: e.target.value })} required>
+              <select style={selectStyle} value={form.id_presentacion} onChange={e => setForm({ ...form, id_presentacion: e.target.value })} required>
                 <option value="">Seleccionar presentación</option>
                 {presentaciones.map(p => <option key={p.id_presentacion} value={p.id_presentacion}>{p.nombre_presentacion}</option>)}
               </select>
 
-              {/* 📷 SECCIÓN DE IMAGEN */}
-              <hr />
-              <p style={{ fontWeight: 600, margin: 0 }}>📷 Imagen del producto</p>
-              
-              {imagenPreview && (
-                <div style={{ textAlign: 'center', marginBottom: 8 }}>
-                  <img 
-                    src={imagenPreview} 
-                    alt="Vista previa" 
-                    style={{ 
-                      maxWidth: '100%', 
-                      maxHeight: 200, 
-                      borderRadius: 8, 
-                      border: '1px solid #ddd',
-                      objectFit: 'cover'
-                    }} 
-                  />
-                </div>
-              )}
-              
-              <input 
-                type="file" 
-                accept="image/*" 
-                onChange={handleImagenChange}
-                style={{ fontSize: 14 }}
-              />
-              {uploading && <small style={{ color: '#235ebd' }}>Subiendo imagen...</small>}
+              <hr style={{ border: 'none', borderTop: '1px solid #1A1A1A', margin: '4px 0' }} />
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#22C55E' }}>📷 Imagen del producto</p>
+              {imagenPreview && <img src={imagenPreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 10, border: '1px solid #1A1A1A', objectFit: 'cover' }} />}
+              <input type="file" accept="image/*" onChange={e => { const f = e.target.files[0]; if (f) { setImagenFile(f); setImagenPreview(URL.createObjectURL(f)) } }} style={{ color: '#666', fontSize: 12 }} />
+              {uploading && <small style={{ color: '#22C55E' }}>Subiendo imagen...</small>}
 
-              <hr />
-              <p style={{ fontWeight: 600, margin: 0 }}>Precio de venta</p>
-              
+              <hr style={{ border: 'none', borderTop: '1px solid #1A1A1A', margin: '4px 0' }} />
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#22C55E' }}>Precio de venta</p>
               <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  className="form-control"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="Precio de venta"
-                  value={form.precio_venta}
-                  onChange={e => setForm({ ...form, precio_venta: e.target.value })}
-                  style={{ flex: 2 }}
-                />
-                <select className="form-control" value={form.id_unidad} onChange={e => setForm({ ...form, id_unidad: e.target.value })} style={{ flex: 1 }}>
-                  <option value="">Seleccionar unidad</option>
+                <input type="number" step="0.01" min="0" placeholder="Precio" value={form.precio_venta} onChange={e => setForm({ ...form, precio_venta: e.target.value })} style={{ ...inputStyle, flex: 2 }} />
+                <select style={{ ...selectStyle, flex: 1 }} value={form.id_unidad} onChange={e => setForm({ ...form, id_unidad: e.target.value })}>
+                  <option value="">Unidad</option>
                   {unidades.map(u => <option key={u.id_unidad} value={u.id_unidad}>{u.nombre_unidad}</option>)}
                 </select>
-                <select className="form-control" value={form.id_moneda} onChange={e => setForm({ ...form, id_moneda: e.target.value })} style={{ flex: 1 }}>
+                <select style={{ ...selectStyle, flex: 1 }} value={form.id_moneda} onChange={e => setForm({ ...form, id_moneda: e.target.value })}>
                   {monedas.map(m => <option key={m.id_moneda} value={m.id_moneda}>{m.codigo_moneda}</option>)}
                 </select>
               </div>
 
-              <hr />
-              <p style={{ fontWeight: 600, margin: 0 }}>Inventario</p>
+              <hr style={{ border: 'none', borderTop: '1px solid #1A1A1A', margin: '4px 0' }} />
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#22C55E' }}>Inventario</p>
+              <input type="number" placeholder="Stock actual" value={form.stock_actual_unidades} onChange={e => setForm({ ...form, stock_actual_unidades: parseInt(e.target.value) })} style={inputStyle} required />
+              <input type="number" placeholder="Stock mínimo" value={form.stock_minimo_unidades} onChange={e => setForm({ ...form, stock_minimo_unidades: parseInt(e.target.value) })} style={inputStyle} />
+              <input type="date" value={form.fecha_vencimiento} onChange={e => setForm({ ...form, fecha_vencimiento: e.target.value })} style={inputStyle} />
 
-              <input className="form-control" type="number" placeholder="Stock actual" value={form.stock_actual_unidades} onChange={e => setForm({ ...form, stock_actual_unidades: parseInt(e.target.value) })} required />
-              <input className="form-control" type="number" placeholder="Stock mínimo" value={form.stock_minimo_unidades} onChange={e => setForm({ ...form, stock_minimo_unidades: parseInt(e.target.value) })} />
-              <input className="form-control" type="date" placeholder="Fecha vencimiento" value={form.fecha_vencimiento} onChange={e => setForm({ ...form, fecha_vencimiento: e.target.value })} />
-
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setMostrarForm(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary" disabled={uploading}>
-                  {editando ? 'Guardar cambios' : 'Crear producto'}
-                </button>
+                <button type="submit" className="btn btn-primary" disabled={uploading}>{editando ? 'Guardar cambios' : 'Crear producto'}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Modal de Confirmación para Eliminar */}
+      {/* MODAL CONFIRMACIÓN */}
       {confirmDelete && (
-        <div 
-          onClick={() => setConfirmDelete(null)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 99999
-          }}
-        >
-          <div 
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: 'white',
-              borderRadius: 16,
-              padding: 32,
-              maxWidth: 420,
-              width: '90%',
-              textAlign: 'center',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-            }}
-          >
-            <div style={{
-              width: 70,
-              height: 70,
-              borderRadius: '50%',
-              background: '#fff3e0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-              fontSize: 36
-            }}>
-              ⚠️
-            </div>
-
-            <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#333' }}>
-              ¿Eliminar este producto?
-            </h3>
-            <p style={{ color: '#666', marginBottom: 24, fontSize: 14 }}>
-              Esta acción desactivará el producto del catálogo.
-            </p>
-
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <button 
-                className="btn btn-secondary"
-                onClick={() => setConfirmDelete(null)}
-                style={{ padding: '10px 24px', fontSize: 15 }}
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={confirmarEliminar}
-                style={{ 
-                  padding: '10px 24px', 
-                  fontSize: 15,
-                  background: '#e53935',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  fontWeight: 600
-                }}
-              >
-                Sí, eliminar
-              </button>
+        <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 400, textAlign: 'center' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', fontSize: 24 }}>⚠️</div>
+            <h3 style={{ color: '#FFF', margin: '0 0 6px' }}>¿Eliminar este producto?</h3>
+            <p style={{ color: '#666', fontSize: 13, marginBottom: 20 }}>Esta acción desactivará el producto del catálogo.</p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button className="btn btn-secondary" onClick={() => setConfirmDelete(null)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={confirmarEliminar}>Sí, eliminar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Notificación */}
+      {/* MODAL NOTIFICACIÓN */}
       {notificacion && (
-        <div 
-          onClick={() => setNotificacion(null)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 99999
-          }}
-        >
-          <div 
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: 'white',
-              borderRadius: 16,
-              padding: 32,
-              maxWidth: 420,
-              width: '90%',
-              textAlign: 'center',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-            }}
-          >
-            <div style={{
-              width: 70,
-              height: 70,
-              borderRadius: '50%',
-              background: notificacion.tipo === 'success' ? '#e8f5e9' : '#fce4ec',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px',
-              fontSize: 36
-            }}>
+        <div className="modal-overlay" onClick={() => setNotificacion(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 380, textAlign: 'center' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: notificacion.tipo === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', fontSize: 24 }}>
               {notificacion.tipo === 'success' ? '✅' : '❌'}
             </div>
-
-            <p style={{ 
-              fontSize: 17, 
-              color: '#333', 
-              margin: '0 0 20px',
-              fontWeight: 500
-            }}>
-              {notificacion.mensaje}
-            </p>
-
-            <button 
-              className="btn btn-primary"
-              onClick={() => setNotificacion(null)}
-              style={{
-                padding: '10px 32px',
-                fontSize: 15
-              }}
-            >
-              Continuar
-            </button>
+            <p style={{ color: '#FFF', fontSize: 15, margin: '0 0 18px' }}>{notificacion.mensaje}</p>
+            <button className="btn btn-primary" onClick={() => setNotificacion(null)}>Continuar</button>
           </div>
         </div>
       )}
-
-      <div className="card">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Imagen</th>
-              <th>Nombre comercial</th>
-              <th>Laboratorio</th>
-              <th>Categoría</th>
-              <th>Presentación</th>
-              <th>Precio</th>
-              <th>Stock</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtrados.length === 0 ? (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 20 }}>No hay productos</td></tr>
-            ) : (
-              filtrados.map(p => {
-                const precio = p.Productos_Precios?.[0]
-                return (
-                  <tr key={p.id_producto}>
-                    <td>
-                      {p.imagen_url ? (
-                        <img 
-                          src={p.imagen_url} 
-                          alt={p.nombre_comercial}
-                          style={{ 
-                            width: 50, 
-                            height: 50, 
-                            borderRadius: 6, 
-                            objectFit: 'cover',
-                            border: '1px solid #eee'
-                          }} 
-                        />
-                      ) : (
-                        <div style={{ 
-                          width: 50, 
-                          height: 50, 
-                          borderRadius: 6, 
-                          background: '#f0f4ff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#235ebd',
-                          fontSize: 20
-                        }}>
-                          💊
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ fontWeight: 600 }}>{p.nombre_comercial}</td>
-                    <td>{p.Laboratorios?.nombre_laboratorio}</td>
-                    <td><span className="badge badge-info">{p.Categorias?.nombre_categoria}</span></td>
-                    <td>{p.Presentaciones?.nombre_presentacion}</td>
-                    <td style={{ fontWeight: 600 }}>
-                      {precio ? `${precio.Monedas?.simbolo || 'S/'} ${precio.precio_venta?.toFixed(2)} / ${precio.Unidades_Medida?.nombre_unidad || 'Unidad'}` : 'Sin precio'}
-                    </td>
-                    <td>{stockBadge(p.stock_actual_unidades)}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button className="icon-btn" title="Editar" onClick={() => handleEditar(p)}>
-                          <i className="ti ti-edit" />
-                        </button>
-                        <button className="icon-btn danger" title="Eliminar" onClick={() => handleEliminar(p.id_producto)}>
-                          <i className="ti ti-trash" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
     </div>
   )
 }
