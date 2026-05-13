@@ -17,29 +17,30 @@ serve(async (req) => {
     // Crear cliente de Supabase con SERVICE ROLE (tiene permisos admin)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SERVICE_ROLE_KEY") ?? ""  // ✅ Corregido: sin prefijo SUPABASE_
     )
 
     // 1. Crear usuario en auth.users
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Confirmar email automáticamente
+      email_confirm: true,
     })
 
     if (authError) throw new Error(authError.message)
 
-    // 2. Actualizar la tabla Usuarios para vincular al empleado
-    const { error: updateError } = await supabaseAdmin
+    // 2. Upsert en la tabla Usuarios (crea si no existe, actualiza si existe)
+    const { error: upsertError } = await supabaseAdmin
       .from("Usuarios")
-      .update({
+      .upsert({
+        username: email,
+        password_hash: "supabase_auth",
         id_empleado: id_empleado,
         id_rol: id_rol,
         estado: true,
-      })
-      .eq("username", email)
+      }, { onConflict: "username" })  // ✅ Usa upsert en lugar de update
 
-    if (updateError) throw new Error(updateError.message)
+    if (upsertError) throw new Error(upsertError.message)
 
     return new Response(
       JSON.stringify({

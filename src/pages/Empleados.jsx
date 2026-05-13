@@ -584,7 +584,7 @@ export default function Empleados() {
       setLoading(false)
     }
   }
-
+  //----------------******************
   const handleSubmit = async event => {
     event.preventDefault()
 
@@ -617,21 +617,44 @@ export default function Empleados() {
         if (error) throw error
         setNotificacion({ tipo: 'success', mensaje: 'Empleado actualizado correctamente' })
       } else {
+        console.log('🔵 Creando empleado...', employeePayload)
+        
         const { data: empleado, error } = await supabase
           .from('Empleados')
           .insert(employeePayload)
           .select('id_empleado')
           .single()
 
-        if (error) throw error
+        if (error) {
+          console.error('❌ Error al crear empleado:', error)
+          throw error
+        }
+        
+        console.log('✅ Empleado creado con id:', empleado?.id_empleado)
 
         if (form.username && form.password) {
+          console.log('🔵 Creando acceso al sistema...')
+          console.log('   Email:', form.username.trim())
+          console.log('   Rol:', Number(form.id_rol))
+          
           try {
+            // 1. Obtener token JWT del usuario autenticado (Admin)
+            const { data: { session } } = await supabase.auth.getSession()
+            
+            if (!session) {
+              console.error('❌ No hay sesión activa')
+              throw new Error('No hay sesión activa')
+            }
+            
+            console.log('✅ Sesión activa encontrada')
+
+            // 2. Llamar a la Edge Function con el token real
+            console.log('🔵 Llamando a Edge Function...')
             const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                Authorization: `Bearer ${session.access_token}`,
               },
               body: JSON.stringify({
                 email: form.username.trim(),
@@ -641,17 +664,80 @@ export default function Empleados() {
               }),
             })
 
+            console.log('📡 Respuesta de Edge Function:', response.status)
+            
             if (!response.ok) {
               const err = await response.json().catch(() => ({}))
-              throw new Error(err.error || 'Error al crear usuario')
+              console.error('❌ Edge Function falló:', err)
+              throw new Error(err.error || err.msg || 'Error al crear usuario en Auth')
             }
 
-            setNotificacion({ tipo: 'success', mensaje: 'Empleado y usuario creados correctamente' })
+            console.log('✅ Usuario creado en Auth correctamente')
+            setNotificacion({ tipo: 'success', mensaje: '✅ Empleado y usuario creados correctamente' })
+            
           } catch (authError) {
-            setNotificacion({ tipo: 'warning', mensaje: `Empleado creado, pero fallo el acceso: ${authError.message}` })
+            console.warn('⚠️ Falló la creación en Auth:', authError.message)
+            console.log('🔵 Intentando guardar en tabla Usuarios manualmente...')
+            
+            // Si la Edge Function falla, guardar en la tabla Usuarios manualmente
+            try {
+              // Verificar si ya existe el usuario
+              console.log('🔍 Verificando si existe usuario:', form.username.trim())
+              const { data: existe, error: checkError } = await supabase
+                .from('Usuarios')
+                .select('id_usuario, username')
+                .eq('username', form.username.trim())
+                .maybeSingle()
+              
+              if (checkError) {
+                console.error('❌ Error al verificar usuario:', checkError)
+                throw checkError
+              }
+
+              if (existe) {
+                console.log('⚠️ Usuario ya existe, actualizando...')
+                const { error: updateError } = await supabase
+                  .from('Usuarios')
+                  .update({
+                    id_empleado: empleado.id_empleado,
+                    id_rol: Number(form.id_rol),
+                    estado: true,
+                  })
+                  .eq('username', form.username.trim())
+                
+                if (updateError) {
+                  console.error('❌ Error al actualizar:', updateError)
+                  throw updateError
+                }
+                console.log('✅ Usuario actualizado correctamente')
+              } else {
+                console.log('🔵 Insertando nuevo usuario...')
+                const { error: insertError } = await supabase
+                  .from('Usuarios')
+                  .insert({
+                    username: form.username.trim(),
+                    password_hash: 'pendiente',
+                    id_empleado: empleado.id_empleado,
+                    id_rol: Number(form.id_rol),
+                    estado: true,
+                  })
+                
+                if (insertError) {
+                  console.error('❌ Error al insertar:', insertError)
+                  throw insertError
+                }
+                console.log('✅ Usuario insertado correctamente')
+              }
+
+              setNotificacion({ tipo: 'warning', mensaje: `⚠️ Empleado creado. El acceso al sistema deberá crearse manualmente en Auth.` })
+            } catch (insertError) {
+              console.error('❌ Error final en BD:', insertError)
+              setNotificacion({ tipo: 'warning', mensaje: `⚠️ Empleado creado, pero falló todo el acceso: ${insertError.message || authError.message}` })
+            }
           }
         } else {
-          setNotificacion({ tipo: 'success', mensaje: 'Empleado creado sin acceso al sistema' })
+          console.log('ℹ️ Sin datos de acceso, creando solo empleado')
+          setNotificacion({ tipo: 'success', mensaje: '✅ Empleado creado sin acceso al sistema' })
         }
       }
 
@@ -660,11 +746,13 @@ export default function Empleados() {
       setForm(emptyForm)
       cargarDatos()
     } catch (error) {
-      setNotificacion({ tipo: 'error', mensaje: error.message || 'No se pudo guardar el empleado' })
+      console.error('❌ Error general:', error)
+      setNotificacion({ tipo: 'error', mensaje: '❌ ' + (error.message || 'No se pudo guardar el empleado') })
     } finally {
       setSaving(false)
     }
   }
+  //---------------------------*************************
 
   const handleEditar = empleado => {
     const user = getRelation(empleado.Usuarios)

@@ -395,11 +395,11 @@ export default function Clientes() {
             <div className="cc-grid2">
               <div className="cc-field">
                 <label className="cc-label">N° Documento *</label>
-                <input className="cc-input" placeholder="00000000" value={form.numero_documento} onChange={e => sf('numero_documento', e.target.value)} required />
+                <input className="cc-input" placeholder="00000000" value={form.numero_documento} onChange={e => sf('numero_documento', e.target.value)} maxLength={11} required />
               </div>
               <div className="cc-field">
                 <label className="cc-label">Teléfono</label>
-                <input className="cc-input" placeholder="9XX XXX XXX" value={form.telefono} onChange={e => sf('telefono', e.target.value)} />
+                <input className="cc-input" placeholder="9XX XXX XXX" value={form.telefono} onChange={e => sf('telefono', e.target.value)} maxLength={9} />
               </div>
             </div>
             <div className="cc-field">
